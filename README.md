@@ -2,7 +2,7 @@
 Contributors: GamerZ  
 Tags: freemyinternet, MDA, Singapore, free, censorship, regulation, licensing scheme, Internet  
 Requires at least: 2.8  
-Tested up to: 3.5  
+Tested up to: 3.9  
 Stable tag: trunk
 License: GPLv2 or later  
 
