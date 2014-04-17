@@ -1,5 +1,6 @@
 # FreeMyInternet
 Contributors: GamerZ  
+Donate link: http://lesterchan.net/site/donation/
 Tags: freemyinternet, MDA, Singapore, free, censorship, regulation, licensing scheme, Internet  
 Requires at least: 2.8  
 Tested up to: 3.9  
