@@ -16,6 +16,9 @@ Automatically places the FreeMyInternet banner from [FreeMyInternet.com](http://
 ### Credits
 * xenomancer of [Censor Me](http://wordpress.org/plugins/censor-me/ "Censor Me")
 
+### Donations
+I spent most of my free time creating, updating, maintaining and supporting these plugins, if you really love my plugins and could spare me a couple of bucks, I will really appreciate it. If not feel free to use it without any obligations.
+
 ## Changelog
 
 ### Version 0.01 (02-06-2013)
