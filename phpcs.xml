@@ -33,4 +33,14 @@
 	<rule ref="WordPress.Security.EscapeOutput">
 		<exclude-pattern>/tests/*</exclude-pattern>
 	</rule>
+
+	<!--
+		The uninstall tests read uninstall.php off disk to assert on its source,
+		because a single-site suite cannot build the 101-site network needed to
+		observe WP_Site_Query's default cap truncating the loop. That is a local
+		file read, not an HTTP fetch, so wp_remote_get() does not apply.
+	-->
+	<rule ref="WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents">
+		<exclude-pattern>/tests/*</exclude-pattern>
+	</rule>
 </ruleset>
