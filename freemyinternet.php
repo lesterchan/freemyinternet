@@ -1,15 +1,24 @@
 <?php
-/*
-Plugin Name: FreeMyInternet
-Plugin URI: https://www.facebook.com/FreeMyInternet
-Description: Automatically places the FreeMyInternet banner from <a href="http://freemyinternet.com">FreeMyInternet.com</a> on your WordPress website. Props to xenomancer of <a href="http://wordpress.org/plugins/censor-me/">Censor Me</a> for the initial idea.
-Version: 0.01
-Author: FreeMyInternet
-Author URI: http://freemyinternet.com/
-*/
+/**
+ * Plugin Name: FreeMyInternet
+ * Plugin URI: https://lesterchan.net/portfolio/programming/php/
+ * Description: Display a site-wide protest banner or full-screen blackout overlay, with an optional start and end date.
+ * Version: 1.0.0
+ * Requires at least: 6.0
+ * Requires PHP: 7.4
+ * Author: Lester 'GaMerZ' Chan
+ * Author URI: https://lesterchan.net
+ * License: GPLv2 or later
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
+ * Text Domain: freemyinternet
+ * Domain Path: /languages
+ *
+ * @package FreeMyInternet
+ */
 
-
 /*
+	Copyright 2026  Lester Chan  (email : lesterchan@gmail.com)
+
 	This program is free software; you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
 	the Free Software Foundation; either version 2 of the License, or
@@ -28,14 +37,18 @@ Author URI: http://freemyinternet.com/
 // Prevent direct access.
 defined( 'ABSPATH' ) || exit;
 
-/*
- * Note: this was previously also hooked onto the `the_title` FILTER. The callback
- * echoes and has no return value, so every title on the site filtered to an empty
- * string, and a copy of the banner was emitted at each title -- including inside
- * <title>, nav menus and widgets. A banner is not a title transformation; the
- * filter registration was simply wrong and is removed.
- */
-add_action( 'get_header', 'freemyinternet', 5 );
-function freemyinternet() {
-	echo '<a style="width:100%;height:100%;vertical-align:middle;text-align:center;background-color:#000;position:absolute;z-index:8888;top:0px;left:0px;background-image:url(http://freemyinternet.com/free_my_internet.jpg);background-position:center center;background-repeat:no-repeat;" href="http://freemyinternet.com"></a>';
+// Plugin version.
+define( 'FREEMYINTERNET_VERSION', '1.0.0' );
+
+// Main plugin file, for resolving paths and URLs from the includes.
+define( 'FREEMYINTERNET_MAIN_FILE', __FILE__ );
+
+require_once __DIR__ . '/includes/class-freemyinternet-options.php';
+require_once __DIR__ . '/includes/class-freemyinternet-frontend.php';
+
+FreeMyInternet_Frontend::init();
+
+if ( is_admin() ) {
+	require_once __DIR__ . '/includes/class-freemyinternet-admin.php';
+	FreeMyInternet_Admin::init();
 }

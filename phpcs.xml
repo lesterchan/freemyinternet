@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<ruleset name="FreeMyInternet">
+	<description>WordPress Coding Standards for FreeMyInternet.</description>
+
+	<file>.</file>
+
+	<!--
+		WPCS dropped its JavaScript sniffs in 3.0, so pointing PHPCS at a .js file
+		applies PHP_CodeSniffer's own PEAR/Squiz PHP conventions instead. The JS is
+		linted with ESLint and @wordpress/eslint-plugin.
+	-->
+	<arg name="extensions" value="php"/>
+	<arg name="colors"/>
+	<arg value="sp"/>
+
+	<!-- Scanning these makes the CI runner run out of memory. -->
+	<exclude-pattern>/vendor/*</exclude-pattern>
+	<exclude-pattern>/node_modules/*</exclude-pattern>
+
+	<rule ref="WordPress"/>
+
+	<config name="minimum_wp_version" value="6.0"/>
+
+	<rule ref="WordPress.WP.I18n">
+		<properties>
+			<property name="text_domain" type="array">
+				<element value="freemyinternet"/>
+			</property>
+		</properties>
+	</rule>
+
+	<!-- Test fixtures print markup directly. -->
+	<rule ref="WordPress.Security.EscapeOutput">
+		<exclude-pattern>/tests/*</exclude-pattern>
+	</rule>
+</ruleset>
