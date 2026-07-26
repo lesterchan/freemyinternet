@@ -25,10 +25,18 @@ Author URI: http://freemyinternet.com/
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-add_filter('the_title', 'freemyinternet', 5);
+// Prevent direct access.
+defined( 'ABSPATH' ) || exit;
+
+/*
+ * Note: this was previously also hooked onto the `the_title` FILTER. The callback
+ * echoes and has no return value, so every title on the site filtered to an empty
+ * string, and a copy of the banner was emitted at each title -- including inside
+ * <title>, nav menus and widgets. A banner is not a title transformation; the
+ * filter registration was simply wrong and is removed.
+ */
 add_action('get_header', 'freemyinternet', 5);
-function freemyinternet($content)
+function freemyinternet()
 {
     echo '<a style="width:100%;height:100%;vertical-align:middle;text-align:center;background-color:#000;position:absolute;z-index:8888;top:0px;left:0px;background-image:url(http://freemyinternet.com/free_my_internet.jpg);background-position:center center;background-repeat:no-repeat;" href="http://freemyinternet.com"></a>';
 }
-?>
