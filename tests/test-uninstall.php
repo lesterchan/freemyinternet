@@ -27,6 +27,44 @@ class Test_FreeMyInternet_Uninstall extends WP_UnitTestCase {
 	}
 
 	/**
+	 * The uninstaller's source with comments stripped.
+	 *
+	 * Every assertion below must run against this rather than the raw source. The
+	 * comments in uninstall.php explain the very arguments being asserted on --
+	 * "'number' => 0 is required" sits directly above the code -- so matching the
+	 * raw file passes even when the argument itself has been changed. That is not
+	 * hypothetical: it was caught by changing 'number' => 0 to 100 and watching
+	 * this file stay green.
+	 *
+	 * @return string
+	 */
+	private function code() {
+		$code = '';
+
+		foreach ( token_get_all( $this->source() ) as $token ) {
+			if ( is_array( $token ) ) {
+				if ( T_COMMENT === $token[0] || T_DOC_COMMENT === $token[0] ) {
+					continue;
+				}
+
+				$code .= $token[1];
+			} else {
+				$code .= $token;
+			}
+		}
+
+		return $code;
+	}
+
+	/**
+	 * The guard above is only meaningful if comments really are stripped.
+	 */
+	public function test_code_helper_strips_comments() {
+		$this->assertStringContainsString( 'WP_Site_Query', $this->source() );
+		$this->assertStringNotContainsString( 'WP_Site_Query', $this->code() );
+	}
+
+	/**
 	 * Running the per-site routine removes both rows.
 	 */
 	public function test_removes_every_option() {
@@ -55,7 +93,7 @@ class Test_FreeMyInternet_Uninstall extends WP_UnitTestCase {
 	 * matching delete_option() would orphan itself forever.
 	 */
 	public function test_deletes_all_known_rows() {
-		$source = $this->source();
+		$source = $this->code();
 
 		$this->assertStringContainsString( "delete_option( 'freemyinternet' )", $source );
 		$this->assertStringContainsString( "delete_option( 'freemyinternet_version' )", $source );
@@ -65,7 +103,7 @@ class Test_FreeMyInternet_Uninstall extends WP_UnitTestCase {
 	 * WP_Site_Query defaults 'number' to 100, so it has to be lifted explicitly.
 	 */
 	public function test_site_query_is_uncapped() {
-		$this->assertMatchesRegularExpression( "/'number'\s*=>\s*0/", $this->source() );
+		$this->assertMatchesRegularExpression( "/'number'\s*=>\s*0/", $this->code() );
 	}
 
 	/**
@@ -73,7 +111,7 @@ class Test_FreeMyInternet_Uninstall extends WP_UnitTestCase {
 	 * wasted work.
 	 */
 	public function test_site_query_selects_ids_only() {
-		$this->assertMatchesRegularExpression( "/'fields'\s*=>\s*'ids'/", $this->source() );
+		$this->assertMatchesRegularExpression( "/'fields'\s*=>\s*'ids'/", $this->code() );
 	}
 
 	/**
@@ -81,7 +119,7 @@ class Test_FreeMyInternet_Uninstall extends WP_UnitTestCase {
 	 * so restoring once after the loop leaves it unwound by exactly one.
 	 */
 	public function test_restore_current_blog_is_inside_the_loop() {
-		$source = $this->source();
+		$source = $this->code();
 
 		$this->assertMatchesRegularExpression(
 			'/foreach\s*\(.*?\)\s*\{[^}]*switch_to_blog[^}]*restore_current_blog[^}]*\}/s',
@@ -93,13 +131,13 @@ class Test_FreeMyInternet_Uninstall extends WP_UnitTestCase {
 	 * The removed wp_get_sites() is never called; it went in WP 5.1 and fatals.
 	 */
 	public function test_does_not_call_the_removed_wp_get_sites() {
-		$this->assertStringNotContainsString( 'wp_get_sites', $this->source() );
+		$this->assertStringNotContainsString( 'wp_get_sites', $this->code() );
 	}
 
 	/**
 	 * Direct access is blocked.
 	 */
 	public function test_guards_direct_access() {
-		$this->assertStringContainsString( "defined( 'WP_UNINSTALL_PLUGIN' ) || exit;", $this->source() );
+		$this->assertStringContainsString( "defined( 'WP_UNINSTALL_PLUGIN' ) || exit;", $this->code() );
 	}
 }
