@@ -134,7 +134,16 @@ class FreeMyInternet_Frontend {
 	}
 
 	/**
-	 * Enqueue the stylesheet, and the script only when there is a button for it.
+	 * Enqueue the overlay's styling, and its script only when there is a button.
+	 *
+	 * Both are inlined rather than shipped as files. Together they are a few
+	 * kilobytes, and they are only ever printed while a protest is actually
+	 * running, so two extra HTTP requests would be poor value. Inlining the CSS
+	 * also removes any flash of an unstyled full-screen overlay.
+	 *
+	 * These register srcless handles rather than echoing tags directly, so the
+	 * output still goes through WordPress's own printers -- which is what lets a
+	 * CSP plugin filtering script_loader_tag attach its nonce.
 	 *
 	 * @return void
 	 */
@@ -145,27 +154,129 @@ class FreeMyInternet_Frontend {
 
 		$options = FreeMyInternet_Options::get();
 
-		wp_enqueue_style(
-			self::HANDLE,
-			plugins_url( 'assets/freemyinternet.css', FREEMYINTERNET_MAIN_FILE ),
-			array(),
-			FREEMYINTERNET_VERSION
-		);
+		wp_register_style( self::HANDLE, false, array(), FREEMYINTERNET_VERSION );
+		wp_enqueue_style( self::HANDLE );
+		wp_add_inline_style( self::HANDLE, self::css() );
 
 		if ( empty( $options['dismissible'] ) ) {
 			return;
 		}
 
 		// The $args array form of the last parameter is WP 6.3+; the floor is 6.0,
-		// so this passes the boolean $in_footer instead. The script must load after
+		// so this passes the boolean $in_footer instead. The script must run after
 		// the markup it operates on, which wp_footer has already printed.
-		wp_enqueue_script(
-			self::HANDLE,
-			plugins_url( 'assets/freemyinternet.js', FREEMYINTERNET_MAIN_FILE ),
-			array(),
-			FREEMYINTERNET_VERSION,
-			true
-		);
+		wp_register_script( self::HANDLE, false, array(), FREEMYINTERNET_VERSION, true );
+		wp_enqueue_script( self::HANDLE );
+		wp_add_inline_script( self::HANDLE, self::js() );
+	}
+
+	/**
+	 * The overlay stylesheet.
+	 *
+	 * Colours come from the two custom properties, which render() sets inline from
+	 * the saved options.
+	 *
+	 * @return string
+	 */
+	public static function css() {
+		return <<<'CSS'
+.freemyinternet-overlay{--freemyinternet-bg:#000;--freemyinternet-fg:#fff;box-sizing:border-box;background-color:var(--freemyinternet-bg);color:var(--freemyinternet-fg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.5;z-index:99999}
+.freemyinternet-overlay *,.freemyinternet-overlay *::before,.freemyinternet-overlay *::after{box-sizing:inherit}
+.freemyinternet-overlay--blackout{position:fixed;top:0;right:0;bottom:0;left:0;display:flex;align-items:center;justify-content:center;padding:3rem 1.5rem;overflow-y:auto;text-align:center}
+.freemyinternet-overlay--blackout .freemyinternet-overlay__inner{max-width:40rem}
+.freemyinternet-overlay--banner{position:fixed;top:0;right:0;left:0;display:flex;align-items:center;justify-content:center;padding:.75rem 3rem;text-align:center}
+.freemyinternet-overlay--banner .freemyinternet-overlay__inner{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:.25rem 1rem}
+.freemyinternet-overlay__image{display:block;max-width:100%;height:auto;margin:0 auto 1.5rem}
+.freemyinternet-overlay--banner .freemyinternet-overlay__image{max-height:1.75rem;margin:0}
+.freemyinternet-overlay__heading{margin:0 0 .75rem;font-size:1.75rem;font-weight:700;color:inherit}
+.freemyinternet-overlay--banner .freemyinternet-overlay__heading{margin:0;font-size:1rem}
+.freemyinternet-overlay__message{margin:0 0 1.25rem}
+.freemyinternet-overlay--banner .freemyinternet-overlay__message{margin:0;font-size:.9375rem}
+.freemyinternet-overlay__message>*:last-child{margin-bottom:0}
+.freemyinternet-overlay__message a,.freemyinternet-overlay__link{color:inherit}
+.freemyinternet-overlay__link{display:inline-block;padding:.5rem 1.25rem;border:2px solid currentColor;border-radius:3px;font-weight:600;text-decoration:none}
+.freemyinternet-overlay--banner .freemyinternet-overlay__link{padding:.125rem .75rem;border-width:1px}
+.freemyinternet-overlay__link:hover,.freemyinternet-overlay__link:focus{color:var(--freemyinternet-bg);background-color:var(--freemyinternet-fg)}
+.freemyinternet-overlay__dismiss{position:absolute;top:.5rem;right:.75rem;padding:.25rem .5rem;border:0;background:none;color:inherit;font-size:1.75rem;line-height:1;cursor:pointer}
+.freemyinternet-overlay__dismiss:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+@media screen and (max-width:600px){.freemyinternet-overlay__heading{font-size:1.375rem}.freemyinternet-overlay--banner{padding:.75rem 2.5rem}}
+CSS;
+	}
+
+	/**
+	 * The dismissal script.
+	 *
+	 * Vanilla, no jQuery. The dismissal is remembered against a signature of the
+	 * current notice, so editing the protest text shows it again to everyone.
+	 *
+	 * @return string
+	 */
+	public static function js() {
+		return <<<'JS'
+( function () {
+	var SELECTOR = '.freemyinternet-overlay';
+	var PREFIX = 'freemyinternet-dismissed:';
+
+	function storageKey( overlay ) {
+		return PREFIX + ( overlay.getAttribute( 'data-freemyinternet-key' ) || '' );
+	}
+
+	function wasDismissed( overlay ) {
+		try {
+			return null !== window.localStorage.getItem( storageKey( overlay ) );
+		} catch ( e ) {
+			return false;
+		}
+	}
+
+	function remember( overlay ) {
+		try {
+			window.localStorage.setItem( storageKey( overlay ), '1' );
+		} catch ( e ) {}
+	}
+
+	function remove( overlay ) {
+		if ( overlay && overlay.parentNode ) {
+			overlay.parentNode.removeChild( overlay );
+		}
+	}
+
+	function init() {
+		var overlay = document.querySelector( SELECTOR );
+
+		if ( ! overlay ) {
+			return;
+		}
+
+		if ( wasDismissed( overlay ) ) {
+			remove( overlay );
+			return;
+		}
+
+		document.addEventListener( 'click', function ( event ) {
+			if ( ! ( event.target instanceof Element ) ) {
+				return;
+			}
+
+			var button = event.target.closest( '[data-freemyinternet-dismiss]' );
+
+			if ( ! button ) {
+				return;
+			}
+
+			event.preventDefault();
+			remember( button.closest( SELECTOR ) );
+			remove( button.closest( SELECTOR ) );
+		} );
+	}
+
+	if ( 'loading' === document.readyState ) {
+		document.addEventListener( 'DOMContentLoaded', init );
+	} else {
+		init();
+	}
+}() );
+JS;
 	}
 
 	/**
