@@ -21,15 +21,18 @@ if ( ! file_exists( $_tests_dir . '/includes/functions.php' ) ) {
 require_once $_tests_dir . '/includes/functions.php';
 
 /**
- * Load the plugin, and its admin half, which the plugin itself only loads on
- * admin requests.
+ * Load the plugin, and its settings screen, which the plugin itself only loads
+ * on admin requests.
  *
  * @return void
  */
 function _freemyinternet_manually_load_plugin() {
 	require dirname( __DIR__ ) . '/freemyinternet.php';
-	require_once dirname( __DIR__ ) . '/includes/class-freemyinternet-admin.php';
+	require_once dirname( __DIR__ ) . '/includes/class-freemyinternet-settings.php';
 }
 tests_add_filter( 'muplugins_loaded', '_freemyinternet_manually_load_plugin' );
 
 require $_tests_dir . '/includes/bootstrap.php';
+
+// After the WordPress bootstrap, so WP_UnitTestCase exists to extend.
+require_once __DIR__ . '/helper-testcase.php';

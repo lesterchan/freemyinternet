@@ -13,8 +13,13 @@ defined( 'WP_UNINSTALL_PLUGIN' ) || exit;
  * @return void
  */
 function freemyinternet_uninstall_site() {
-	delete_option( 'freemyinternet' );
+	delete_option( 'freemyinternet_options' );
 	delete_option( 'freemyinternet_version' );
+
+	// The settings row was named after the slug alone before 1.0.0 shipped. It is
+	// deleted by the upgrade routine, so this only catches an install that never
+	// reached wp-admin between updating and being removed.
+	delete_option( 'freemyinternet' );
 }
 
 if ( is_multisite() ) {

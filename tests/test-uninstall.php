@@ -15,7 +15,7 @@
  * leaving options behind on every site past the hundredth -- so guarding the
  * source is what stops the argument being dropped again.
  */
-class Test_FreeMyInternet_Uninstall extends WP_UnitTestCase {
+class FreeMyInternet_Uninstall_Test extends FreeMyInternet_TestCase {
 
 	/**
 	 * The uninstaller's source.
@@ -23,7 +23,7 @@ class Test_FreeMyInternet_Uninstall extends WP_UnitTestCase {
 	 * @return string
 	 */
 	private function source() {
-		return file_get_contents( dirname( __DIR__ ) . '/uninstall.php' );
+		return $this->plugin_file_contents( 'uninstall.php' );
 	}
 
 	/**
@@ -56,23 +56,17 @@ class Test_FreeMyInternet_Uninstall extends WP_UnitTestCase {
 		return $code;
 	}
 
-	/**
-	 * The guard above is only meaningful if comments really are stripped.
-	 */
-	public function test_code_helper_strips_comments() {
-		$this->assertStringContainsString( 'WP_Site_Query', $this->source() );
-		$this->assertStringNotContainsString( 'WP_Site_Query', $this->code() );
+	public function test_the_comment_stripping_helper_really_strips_comments() {
+		$this->assertStringContainsString( 'WP_Site_Query', $this->source(), 'the guard only means something if the comment is there.' );
+		$this->assertStringNotContainsString( 'WP_Site_Query', $this->code(), 'the helper must strip comments before anything is asserted.' );
 	}
 
-	/**
-	 * Running the per-site routine removes both rows.
-	 */
-	public function test_removes_every_option() {
+	public function test_running_the_per_site_routine_removes_both_rows() {
 		FreeMyInternet_Options::update( array( 'enabled' => true ) );
 		FreeMyInternet_Options::maybe_upgrade();
 
-		$this->assertNotFalse( get_option( FreeMyInternet_Options::OPTION_NAME ) );
-		$this->assertNotFalse( get_option( FreeMyInternet_Options::VERSION_OPTION_NAME ) );
+		$this->assertNotFalse( get_option( FreeMyInternet_Options::OPTION ), 'the settings row must exist before it can be removed.' );
+		$this->assertNotFalse( get_option( FreeMyInternet_Options::VERSION ), 'the version row must exist before it can be removed.' );
 
 		if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 			define( 'WP_UNINSTALL_PLUGIN', 'freemyinternet/freemyinternet.php' );
@@ -80,64 +74,55 @@ class Test_FreeMyInternet_Uninstall extends WP_UnitTestCase {
 
 		// require_once: the suite runs in one process, and a second require would
 		// redeclare freemyinternet_uninstall_site() and fatal.
-		require_once dirname( __DIR__ ) . '/uninstall.php';
+		require_once $this->plugin_path( 'uninstall.php' );
 
 		freemyinternet_uninstall_site();
 
-		$this->assertFalse( get_option( FreeMyInternet_Options::OPTION_NAME ) );
-		$this->assertFalse( get_option( FreeMyInternet_Options::VERSION_OPTION_NAME ) );
+		$this->assertFalse( get_option( FreeMyInternet_Options::OPTION ), 'the settings row must be deleted.' );
+		$this->assertFalse( get_option( FreeMyInternet_Options::VERSION ), 'the version row must be deleted.' );
 	}
 
-	/**
-	 * Every option the plugin writes is deleted. A row added later without a
-	 * matching delete_option() would orphan itself forever.
-	 */
-	public function test_deletes_all_known_rows() {
-		$source = $this->code();
+	public function test_every_row_the_plugin_writes_is_named_in_the_uninstaller() {
+		$code = $this->code();
 
-		$this->assertStringContainsString( "delete_option( 'freemyinternet' )", $source );
-		$this->assertStringContainsString( "delete_option( 'freemyinternet_version' )", $source );
+		$this->assertStringContainsString( "delete_option( 'freemyinternet_options' )", $code, 'the settings row is not deleted.' );
+		$this->assertStringContainsString( "delete_option( 'freemyinternet_version' )", $code, 'the version row is not deleted.' );
+		$this->assertStringContainsString( "delete_option( 'freemyinternet' )", $code, 'the pre-release settings row is not deleted.' );
 	}
 
-	/**
-	 * WP_Site_Query defaults 'number' to 100, so it has to be lifted explicitly.
-	 */
-	public function test_site_query_is_uncapped() {
-		$this->assertMatchesRegularExpression( "/'number'\s*=>\s*0/", $this->code() );
-	}
-
-	/**
-	 * Only the IDs are needed; hydrating WP_Site objects for a large network is
-	 * wasted work.
-	 */
-	public function test_site_query_selects_ids_only() {
-		$this->assertMatchesRegularExpression( "/'fields'\s*=>\s*'ids'/", $this->code() );
-	}
-
-	/**
-	 * The restore belongs inside the loop: switch_to_blog() pushes onto a stack,
-	 * so restoring once after the loop leaves it unwound by exactly one.
-	 */
-	public function test_restore_current_blog_is_inside_the_loop() {
-		$source = $this->code();
-
+	public function test_the_site_query_is_uncapped() {
 		$this->assertMatchesRegularExpression(
-			'/foreach\s*\(.*?\)\s*\{[^}]*switch_to_blog[^}]*restore_current_blog[^}]*\}/s',
-			$source
+			"/'number'\s*=>\s*0/",
+			$this->code(),
+			"WP_Site_Query defaults 'number' to 100, so it has to be lifted explicitly."
 		);
 	}
 
-	/**
-	 * The removed wp_get_sites() is never called; it went in WP 5.1 and fatals.
-	 */
-	public function test_does_not_call_the_removed_wp_get_sites() {
-		$this->assertStringNotContainsString( 'wp_get_sites', $this->code() );
+	public function test_the_site_query_selects_ids_only() {
+		$this->assertMatchesRegularExpression(
+			"/'fields'\s*=>\s*'ids'/",
+			$this->code(),
+			'hydrating WP_Site objects for a large network is wasted work.'
+		);
 	}
 
-	/**
-	 * Direct access is blocked.
-	 */
-	public function test_guards_direct_access() {
-		$this->assertStringContainsString( "defined( 'WP_UNINSTALL_PLUGIN' ) || exit;", $this->code() );
+	public function test_the_blog_is_restored_inside_the_loop() {
+		$this->assertMatchesRegularExpression(
+			'/foreach\s*\(.*?\)\s*\{[^}]*switch_to_blog[^}]*restore_current_blog[^}]*\}/s',
+			$this->code(),
+			'switch_to_blog() pushes onto a stack, so restoring once after the loop leaves it unwound by one.'
+		);
+	}
+
+	public function test_the_removed_wp_get_sites_is_never_called() {
+		$this->assertStringNotContainsString( 'wp_get_sites', $this->code(), 'wp_get_sites() went in WP 5.1 and fatals.' );
+	}
+
+	public function test_direct_access_to_the_uninstaller_is_blocked() {
+		$this->assertStringContainsString(
+			"defined( 'WP_UNINSTALL_PLUGIN' ) || exit;",
+			$this->code(),
+			'the uninstaller must not run outside an uninstall.'
+		);
 	}
 }

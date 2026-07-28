@@ -8,28 +8,36 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Reads and writes the plugin's single option row.
+ * Reads and writes the plugin's two option rows.
  *
- * Before 1.0.0 the plugin stored nothing at all -- the banner was hardcoded -- so
- * there are no legacy rows to migrate, only a schema version to stamp so a future
- * release has something to gate on.
+ * Settings live in one row and the version markers in another, so the settings
+ * screen and the upgrade routine can never overwrite each other's work.
  */
 class FreeMyInternet_Options {
 
 	/**
-	 * The option key holding every setting, as a nested array.
+	 * The option row holding every setting, as a nested array.
 	 *
 	 * @var string
 	 */
-	const OPTION_NAME = 'freemyinternet';
+	const OPTION = 'freemyinternet_options';
 
 	/**
-	 * Schema version. Kept in its own row because it is read to decide whether the
-	 * main row needs migrating, so it cannot live inside the thing being migrated.
+	 * The option row holding the 'plugin' and 'db' version markers.
 	 *
 	 * @var string
 	 */
-	const VERSION_OPTION_NAME = 'freemyinternet_version';
+	const VERSION = 'freemyinternet_version';
+
+	/**
+	 * The settings row this plugin used before 1.0.0 shipped.
+	 *
+	 * The rename happened inside the unreleased major, so this is only ever seen
+	 * on an install that ran a development build.
+	 *
+	 * @var string
+	 */
+	const LEGACY_OPTION = 'freemyinternet';
 
 	/**
 	 * The two supported presentations.
@@ -80,7 +88,7 @@ class FreeMyInternet_Options {
 	 * @return mixed The full option array, or one value, or null for an unknown key.
 	 */
 	public static function get( $key = null ) {
-		$stored  = get_option( self::OPTION_NAME, array() );
+		$stored  = get_option( self::OPTION, array() );
 		$options = wp_parse_args( is_array( $stored ) ? $stored : array(), self::get_defaults() );
 
 		if ( null === $key ) {
@@ -97,14 +105,34 @@ class FreeMyInternet_Options {
 	 * @return bool Whether the option row changed.
 	 */
 	public static function update( array $options ) {
-		return update_option( self::OPTION_NAME, $options );
+		return update_option( self::OPTION, $options );
+	}
+
+	/**
+	 * Get the version markers.
+	 *
+	 * @return array The 'plugin' and 'db' markers, each an empty string when unset.
+	 */
+	public static function get_versions() {
+		$stored = get_option( self::VERSION, array() );
+
+		if ( ! is_array( $stored ) ) {
+			$stored = array();
+		}
+
+		return array(
+			'plugin' => isset( $stored['plugin'] ) ? (string) $stored['plugin'] : '',
+			'db'     => isset( $stored['db'] ) ? (string) $stored['db'] : '',
+		);
 	}
 
 	/**
 	 * Clean a full set of submitted options.
 	 *
 	 * Also used as register_setting()'s sanitize_callback, which receives the whole
-	 * nested array in one go.
+	 * nested array in one go. It reads nothing back out of the database: the version
+	 * markers live in their own row, so there is nothing here to rescue and nothing
+	 * this can corrupt.
 	 *
 	 * @param mixed $input Raw submitted values.
 	 * @return array
@@ -196,22 +224,62 @@ class FreeMyInternet_Options {
 	}
 
 	/**
-	 * Stamp the schema version.
+	 * Bring the stored rows up to date with the running code.
 	 *
 	 * Runs on activation and on every admin load, because activation hooks do not
 	 * fire when a plugin is updated -- which is the usual reason a migration never
 	 * runs. Idempotent.
 	 *
+	 * Both markers are written together in one update_option() at the very end, so
+	 * a half-finished upgrade never records itself as complete.
+	 *
 	 * @return void
 	 */
 	public static function maybe_upgrade() {
-		if ( get_option( self::VERSION_OPTION_NAME ) === FREEMYINTERNET_VERSION ) {
+		$versions = self::get_versions();
+
+		if ( FREEMYINTERNET_VERSION === $versions['plugin'] && FREEMYINTERNET_DB_VERSION === $versions['db'] ) {
 			return;
 		}
 
-		// No data migration is needed yet: nothing before 1.0.0 stored any options.
-		// Future migrations gate on the stored version, never on whether some key
-		// happens to be present, so that re-running cannot overwrite a migrated row.
-		update_option( self::VERSION_OPTION_NAME, FREEMYINTERNET_VERSION );
+		self::migrate();
+
+		update_option(
+			self::VERSION,
+			array(
+				'plugin' => FREEMYINTERNET_VERSION,
+				'db'     => FREEMYINTERNET_DB_VERSION,
+			)
+		);
+	}
+
+	/**
+	 * Fold the pre-1.0.0 rows into the current ones.
+	 *
+	 * The old settings row was named after the slug alone, and the old version row
+	 * held a bare version string rather than the two markers. Both are read once,
+	 * folded in, and deleted; re-running finds nothing left to do.
+	 *
+	 * Settings are re-sanitised on the way through, so an upgrade cleans a row that
+	 * an older, laxer version wrote just as thoroughly as a save would.
+	 *
+	 * @return void
+	 */
+	protected static function migrate() {
+		$legacy = get_option( self::LEGACY_OPTION );
+
+		if ( false !== $legacy ) {
+			if ( false === get_option( self::OPTION ) ) {
+				update_option( self::OPTION, self::sanitize( $legacy ) );
+			}
+
+			delete_option( self::LEGACY_OPTION );
+		}
+
+		$stored = get_option( self::OPTION );
+
+		if ( false !== $stored ) {
+			update_option( self::OPTION, self::sanitize( $stored ) );
+		}
 	}
 }

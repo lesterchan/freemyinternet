@@ -14,14 +14,7 @@ defined( 'ABSPATH' ) || exit;
  * wp-admin and not on wp-login.php -- so a misconfigured overlay cannot lock an
  * owner out of the dashboard.
  */
-class FreeMyInternet_Frontend {
-
-	/**
-	 * Shared handle for the stylesheet and the script.
-	 *
-	 * @var string
-	 */
-	const HANDLE = 'freemyinternet';
+class FreeMyInternet_Display {
 
 	/**
 	 * Hook the front end into WordPress.
@@ -29,20 +22,8 @@ class FreeMyInternet_Frontend {
 	 * @return void
 	 */
 	public static function init() {
-		// Must be registered at file-load time, which is when this runs.
-		register_activation_hook( FREEMYINTERNET_MAIN_FILE, array( __CLASS__, 'activate' ) );
-
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue' ) );
 		add_action( 'wp_footer', array( __CLASS__, 'render' ), 5 );
-	}
-
-	/**
-	 * Activation: stamp the schema version.
-	 *
-	 * @return void
-	 */
-	public static function activate() {
-		FreeMyInternet_Options::maybe_upgrade();
 	}
 
 	/**
@@ -143,7 +124,8 @@ class FreeMyInternet_Frontend {
 	 *
 	 * These register srcless handles rather than echoing tags directly, so the
 	 * output still goes through WordPress's own printers -- which is what lets a
-	 * CSP plugin filtering script_loader_tag attach its nonce.
+	 * CSP plugin filtering script_loader_tag attach its nonce. Neither handle
+	 * declares a dependency, so the plugin pulls no library onto the page.
 	 *
 	 * @return void
 	 */
@@ -154,9 +136,9 @@ class FreeMyInternet_Frontend {
 
 		$options = FreeMyInternet_Options::get();
 
-		wp_register_style( self::HANDLE, false, array(), FREEMYINTERNET_VERSION );
-		wp_enqueue_style( self::HANDLE );
-		wp_add_inline_style( self::HANDLE, self::css() );
+		wp_register_style( FREEMYINTERNET_SLUG, false, array(), FREEMYINTERNET_VERSION );
+		wp_enqueue_style( FREEMYINTERNET_SLUG );
+		wp_add_inline_style( FREEMYINTERNET_SLUG, self::css() );
 
 		if ( empty( $options['dismissible'] ) ) {
 			return;
@@ -165,84 +147,87 @@ class FreeMyInternet_Frontend {
 		// The $args array form of the last parameter is WP 6.3+; the floor is 6.0,
 		// so this passes the boolean $in_footer instead. The script must run after
 		// the markup it operates on, which wp_footer has already printed.
-		wp_register_script( self::HANDLE, false, array(), FREEMYINTERNET_VERSION, true );
-		wp_enqueue_script( self::HANDLE );
-		wp_add_inline_script( self::HANDLE, self::js() );
+		wp_register_script( FREEMYINTERNET_SLUG, false, array(), FREEMYINTERNET_VERSION, true );
+		wp_enqueue_script( FREEMYINTERNET_SLUG );
+		wp_add_inline_script( FREEMYINTERNET_SLUG, self::js() );
 	}
 
 	/**
 	 * The overlay stylesheet.
 	 *
-	 * Colours come from the two custom properties, which render() sets inline from
-	 * the saved options.
+	 * Everything is scoped under the single `.freemyinternet` root class. Colours
+	 * come from the two custom properties, which render() sets inline from the saved
+	 * options, so a theme can override either without editing this sheet. Every
+	 * inset is a logical property, so one sheet serves both writing directions and
+	 * there is no separate RTL file to keep in step.
 	 *
 	 * @return string
 	 */
 	public static function css() {
 		return <<<'CSS'
-.freemyinternet-overlay{--freemyinternet-bg:#000;--freemyinternet-fg:#fff;box-sizing:border-box;background-color:var(--freemyinternet-bg);color:var(--freemyinternet-fg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.5;z-index:99999}
-.freemyinternet-overlay *,.freemyinternet-overlay *::before,.freemyinternet-overlay *::after{box-sizing:inherit}
-.freemyinternet-overlay--blackout{position:fixed;top:0;right:0;bottom:0;left:0;display:flex;align-items:center;justify-content:center;padding:3rem 1.5rem;overflow-y:auto;text-align:center}
-.freemyinternet-overlay--blackout .freemyinternet-overlay__inner{max-width:40rem}
-.freemyinternet-overlay--banner{position:fixed;top:0;right:0;left:0;display:flex;align-items:center;justify-content:center;padding:.75rem 3rem;text-align:center}
-.freemyinternet-overlay--banner .freemyinternet-overlay__inner{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:.25rem 1rem}
-.freemyinternet-overlay__image{display:block;max-width:100%;height:auto;margin:0 auto 1.5rem}
-.freemyinternet-overlay--banner .freemyinternet-overlay__image{max-height:1.75rem;margin:0}
-.freemyinternet-overlay__heading{margin:0 0 .75rem;font-size:1.75rem;font-weight:700;color:inherit}
-.freemyinternet-overlay--banner .freemyinternet-overlay__heading{margin:0;font-size:1rem}
-.freemyinternet-overlay__message{margin:0 0 1.25rem}
-.freemyinternet-overlay--banner .freemyinternet-overlay__message{margin:0;font-size:.9375rem}
-.freemyinternet-overlay__message>*:last-child{margin-bottom:0}
-.freemyinternet-overlay__message a,.freemyinternet-overlay__link{color:inherit}
-.freemyinternet-overlay__link{display:inline-block;padding:.5rem 1.25rem;border:2px solid currentColor;border-radius:3px;font-weight:600;text-decoration:none}
-.freemyinternet-overlay--banner .freemyinternet-overlay__link{padding:.125rem .75rem;border-width:1px}
-.freemyinternet-overlay__link:hover,.freemyinternet-overlay__link:focus{color:var(--freemyinternet-bg);background-color:var(--freemyinternet-fg)}
-.freemyinternet-overlay__dismiss{position:absolute;top:.5rem;right:.75rem;padding:.25rem .5rem;border:0;background:none;color:inherit;font-size:1.75rem;line-height:1;cursor:pointer}
-.freemyinternet-overlay__dismiss:focus-visible{outline:2px solid currentColor;outline-offset:2px}
-@media screen and (max-width:600px){.freemyinternet-overlay__heading{font-size:1.375rem}.freemyinternet-overlay--banner{padding:.75rem 2.5rem}}
+.freemyinternet{box-sizing:border-box;background-color:var(--freemyinternet-bg,#000);color:var(--freemyinternet-fg,#fff);line-height:1.5;z-index:99999}
+.freemyinternet *,.freemyinternet *::before,.freemyinternet *::after{box-sizing:inherit}
+.freemyinternet--blackout{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:3rem 1.5rem;overflow-y:auto;text-align:center}
+.freemyinternet--blackout .freemyinternet__inner{max-width:40rem}
+.freemyinternet--banner{position:fixed;inset-block-start:0;inset-inline:0;display:flex;align-items:center;justify-content:center;padding:.75rem 3rem;text-align:center}
+.freemyinternet--banner .freemyinternet__inner{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:.25rem 1rem}
+.freemyinternet__image{display:block;max-width:100%;height:auto;margin:0 auto 1.5rem}
+.freemyinternet--banner .freemyinternet__image{max-height:1.75rem;margin:0}
+.freemyinternet__heading{margin:0 0 .75rem;font-size:1.75rem;font-weight:700;color:inherit}
+.freemyinternet--banner .freemyinternet__heading{margin:0;font-size:1rem}
+.freemyinternet__message{margin:0 0 1.25rem}
+.freemyinternet--banner .freemyinternet__message{margin:0;font-size:.9375rem}
+.freemyinternet__message>*:last-child{margin-block-end:0}
+.freemyinternet__message a,.freemyinternet__link{color:inherit}
+.freemyinternet__link{display:inline-block;padding:.5rem 1.25rem;border:2px solid currentColor;border-radius:3px;font-weight:600;text-decoration:none}
+.freemyinternet--banner .freemyinternet__link{padding:.125rem .75rem;border-width:1px}
+.freemyinternet__link:hover,.freemyinternet__link:focus{color:var(--freemyinternet-bg,#000);background-color:var(--freemyinternet-fg,#fff)}
+.freemyinternet__dismiss{position:absolute;inset-block-start:.5rem;inset-inline-end:.75rem;padding:.25rem .5rem;border:0;background:none;color:inherit;font-size:1.75rem;line-height:1;cursor:pointer}
+.freemyinternet__dismiss:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+@media screen and (max-width:600px){.freemyinternet__heading{font-size:1.375rem}.freemyinternet--banner{padding:.75rem 2.5rem}}
 CSS;
 	}
 
 	/**
 	 * The dismissal script.
 	 *
-	 * Vanilla, no jQuery. The dismissal is remembered against a signature of the
-	 * current notice, so editing the protest text shows it again to everyone.
+	 * The dismissal is remembered against a signature of the current notice, so
+	 * editing the protest text shows it again to everyone. Behaviour attaches
+	 * through the `data-freemyinternet-dismiss` attribute rather than an inline
+	 * handler, and nothing is declared in the global scope.
 	 *
 	 * @return string
 	 */
 	public static function js() {
 		return <<<'JS'
 ( function () {
-	var SELECTOR = '.freemyinternet-overlay';
-	var PREFIX = 'freemyinternet-dismissed:';
+	const SELECTOR = '.freemyinternet';
+	const PREFIX = 'freemyinternet-dismissed:';
 
-	function storageKey( overlay ) {
-		return PREFIX + ( overlay.getAttribute( 'data-freemyinternet-key' ) || '' );
-	}
+	const storageKey = ( overlay ) => PREFIX + ( overlay.getAttribute( 'data-freemyinternet-key' ) || '' );
 
-	function wasDismissed( overlay ) {
+	const wasDismissed = ( overlay ) => {
 		try {
 			return null !== window.localStorage.getItem( storageKey( overlay ) );
 		} catch ( e ) {
 			return false;
 		}
-	}
+	};
 
-	function remember( overlay ) {
+	const remember = ( overlay ) => {
 		try {
 			window.localStorage.setItem( storageKey( overlay ), '1' );
 		} catch ( e ) {}
-	}
+	};
 
-	function remove( overlay ) {
-		if ( overlay && overlay.parentNode ) {
-			overlay.parentNode.removeChild( overlay );
+	const remove = ( overlay ) => {
+		if ( overlay ) {
+			overlay.remove();
 		}
-	}
+	};
 
-	function init() {
-		var overlay = document.querySelector( SELECTOR );
+	const init = () => {
+		const overlay = document.querySelector( SELECTOR );
 
 		if ( ! overlay ) {
 			return;
@@ -253,12 +238,12 @@ CSS;
 			return;
 		}
 
-		document.addEventListener( 'click', function ( event ) {
+		document.addEventListener( 'click', ( event ) => {
 			if ( ! ( event.target instanceof Element ) ) {
 				return;
 			}
 
-			var button = event.target.closest( '[data-freemyinternet-dismiss]' );
+			const button = event.target.closest( '[data-freemyinternet-dismiss]' );
 
 			if ( ! button ) {
 				return;
@@ -268,7 +253,7 @@ CSS;
 			remember( button.closest( SELECTOR ) );
 			remove( button.closest( SELECTOR ) );
 		} );
-	}
+	};
 
 	if ( 'loading' === document.readyState ) {
 		document.addEventListener( 'DOMContentLoaded', init );
@@ -313,32 +298,32 @@ JS;
 
 		$label = '' !== $heading ? $heading : __( 'Site notice', 'freemyinternet' );
 		?>
-		<div class="freemyinternet-overlay freemyinternet-overlay--<?php echo esc_attr( $mode ); ?>"
+		<div class="freemyinternet freemyinternet--<?php echo esc_attr( $mode ); ?>"
 			style="<?php echo esc_attr( $style ); ?>"
 			data-freemyinternet-key="<?php echo esc_attr( self::dismiss_key( $options ) ); ?>"
 			role="region"
 			aria-label="<?php echo esc_attr( $label ); ?>">
-			<div class="freemyinternet-overlay__inner">
+			<div class="freemyinternet__inner">
 				<?php if ( '' !== $image_url ) : ?>
-					<img class="freemyinternet-overlay__image" src="<?php echo esc_url( $image_url ); ?>" alt="" />
+					<img class="freemyinternet__image" src="<?php echo esc_url( $image_url ); ?>" alt="" />
 				<?php endif; ?>
 
 				<?php if ( '' !== $heading ) : ?>
-					<p class="freemyinternet-overlay__heading"><?php echo esc_html( $heading ); ?></p>
+					<p class="freemyinternet__heading"><?php echo esc_html( $heading ); ?></p>
 				<?php endif; ?>
 
 				<?php if ( '' !== trim( (string) $options['message'] ) ) : ?>
-					<div class="freemyinternet-overlay__message"><?php echo wp_kses_post( $options['message'] ); ?></div>
+					<div class="freemyinternet__message"><?php echo wp_kses_post( $options['message'] ); ?></div>
 				<?php endif; ?>
 
 				<?php if ( '' !== $link_url && '' !== $link_text ) : ?>
-					<a class="freemyinternet-overlay__link" href="<?php echo esc_url( $link_url ); ?>"><?php echo esc_html( $link_text ); ?></a>
+					<a class="freemyinternet__link" href="<?php echo esc_url( $link_url ); ?>"><?php echo esc_html( $link_text ); ?></a>
 				<?php endif; ?>
 			</div>
 
 			<?php if ( ! empty( $options['dismissible'] ) ) : ?>
 				<button type="button"
-					class="freemyinternet-overlay__dismiss"
+					class="freemyinternet__dismiss"
 					data-freemyinternet-dismiss
 					aria-label="<?php esc_attr_e( 'Dismiss this notice', 'freemyinternet' ); ?>">&times;</button>
 			<?php endif; ?>

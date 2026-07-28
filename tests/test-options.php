@@ -1,6 +1,6 @@
 <?php
 /**
- * Options: defaults, merging and sanitizing.
+ * Options: defaults, merging, sanitizing and the upgrade routine.
  *
  * @package FreeMyInternet
  */
@@ -8,81 +8,71 @@
 /**
  * Covers FreeMyInternet_Options.
  */
-class Test_FreeMyInternet_Options extends WP_UnitTestCase {
+class FreeMyInternet_Options_Test extends FreeMyInternet_TestCase {
 
-	/**
-	 * Start every test from an unconfigured install.
-	 */
-	public function set_up() {
-		parent::set_up();
-
-		delete_option( FreeMyInternet_Options::OPTION_NAME );
-		delete_option( FreeMyInternet_Options::VERSION_OPTION_NAME );
+	public function test_a_fresh_install_shows_nothing_to_visitors() {
+		$this->assertFalse(
+			FreeMyInternet_Options::get( 'enabled' ),
+			'a fresh install must not black the site out the way 0.01 did.'
+		);
 	}
 
-	/**
-	 * A fresh install must not show anything. Version 0.01 blacked the site out
-	 * the moment it was activated; that must not survive the upgrade.
-	 */
-	public function test_disabled_by_default() {
-		$this->assertFalse( FreeMyInternet_Options::get( 'enabled' ) );
-	}
-
-	/**
-	 * Everything lives in one row.
-	 */
-	public function test_settings_live_in_a_single_option_row() {
+	public function test_every_setting_lives_in_one_option_row_named_after_the_slug() {
 		FreeMyInternet_Options::update( array( 'enabled' => true ) );
 
-		$this->assertIsArray( get_option( FreeMyInternet_Options::OPTION_NAME ) );
-		$this->assertSame( 'freemyinternet', FreeMyInternet_Options::OPTION_NAME );
+		$this->assertSame(
+			'freemyinternet_options',
+			FreeMyInternet_Options::OPTION,
+			'the settings row must be named {slug}_options.'
+		);
+		$this->assertIsArray(
+			get_option( FreeMyInternet_Options::OPTION ),
+			'the settings row must hold a nested array of every setting.'
+		);
 	}
 
-	/**
-	 * Keys missing from a stored row fall back to the defaults, which is what lets
-	 * an upgraded install pick up settings added in a later release.
-	 */
-	public function test_stored_values_merge_over_defaults() {
-		update_option( FreeMyInternet_Options::OPTION_NAME, array( 'heading' => 'Stored' ) );
-
-		$this->assertSame( 'Stored', FreeMyInternet_Options::get( 'heading' ) );
-		$this->assertSame( 'blackout', FreeMyInternet_Options::get( 'mode' ) );
-		$this->assertFalse( FreeMyInternet_Options::get( 'enabled' ) );
+	public function test_the_version_row_is_separate_from_the_settings_row() {
+		$this->assertSame(
+			'freemyinternet_version',
+			FreeMyInternet_Options::VERSION,
+			'the version markers must live in {slug}_version.'
+		);
+		$this->assertNotSame(
+			FreeMyInternet_Options::OPTION,
+			FreeMyInternet_Options::VERSION,
+			'the markers must not share a row with the settings they gate.'
+		);
 	}
 
-	/**
-	 * An unknown key is null rather than a notice.
-	 */
-	public function test_unknown_key_returns_null() {
-		$this->assertNull( FreeMyInternet_Options::get( 'no_such_key' ) );
+	public function test_keys_missing_from_a_stored_row_fall_back_to_the_defaults() {
+		update_option( FreeMyInternet_Options::OPTION, array( 'heading' => 'Stored' ) );
+
+		$this->assertSame( 'Stored', FreeMyInternet_Options::get( 'heading' ), 'a stored value must be returned as stored.' );
+		$this->assertSame( 'blackout', FreeMyInternet_Options::get( 'mode' ), 'a missing key must fall back to its default.' );
+		$this->assertFalse( FreeMyInternet_Options::get( 'enabled' ), 'a missing enabled key must not switch the notice on.' );
 	}
 
-	/**
-	 * A corrupt row does not take the site down.
-	 */
-	public function test_non_array_row_falls_back_to_defaults() {
-		update_option( FreeMyInternet_Options::OPTION_NAME, 'not an array' );
-
-		$this->assertSame( 'blackout', FreeMyInternet_Options::get( 'mode' ) );
+	public function test_an_unknown_key_returns_null_rather_than_a_notice() {
+		$this->assertNull( FreeMyInternet_Options::get( 'no_such_key' ), 'an unknown key must return null.' );
 	}
 
-	/**
-	 * Only the two known presentations are accepted.
-	 */
-	public function test_sanitize_rejects_an_unknown_mode() {
+	public function test_a_corrupt_option_row_falls_back_to_the_defaults() {
+		update_option( FreeMyInternet_Options::OPTION, 'not an array' );
+
+		$this->assertSame( 'blackout', FreeMyInternet_Options::get( 'mode' ), 'a corrupt row must not take the site down.' );
+	}
+
+	public function test_sanitizing_rejects_a_presentation_that_is_not_one_of_the_two() {
 		$clean = FreeMyInternet_Options::sanitize( array( 'mode' => 'wharrgarbl' ) );
 
-		$this->assertSame( 'blackout', $clean['mode'] );
+		$this->assertSame( 'blackout', $clean['mode'], 'an unknown presentation must fall back to blackout.' );
 
 		$clean = FreeMyInternet_Options::sanitize( array( 'mode' => 'banner' ) );
 
-		$this->assertSame( 'banner', $clean['mode'] );
+		$this->assertSame( 'banner', $clean['mode'], 'a known presentation must be kept.' );
 	}
 
-	/**
-	 * An unsafe protocol must not survive being saved.
-	 */
-	public function test_sanitize_strips_unsafe_link_protocols() {
+	public function test_sanitizing_strips_an_unsafe_protocol_from_both_urls() {
 		$clean = FreeMyInternet_Options::sanitize(
 			array(
 				'link_url'  => 'javascript:alert(1)',
@@ -90,34 +80,24 @@ class Test_FreeMyInternet_Options extends WP_UnitTestCase {
 			)
 		);
 
-		$this->assertSame( '', $clean['link_url'] );
-		$this->assertSame( '', $clean['image_url'] );
+		$this->assertSame( '', $clean['link_url'], 'a javascript: link must not be stored.' );
+		$this->assertSame( '', $clean['image_url'], 'a javascript: image URL must not be stored.' );
 	}
 
-	/**
-	 * A normal URL is kept.
-	 */
-	public function test_sanitize_keeps_a_safe_url() {
+	public function test_sanitizing_keeps_an_ordinary_url() {
 		$clean = FreeMyInternet_Options::sanitize( array( 'link_url' => 'https://example.org/protest' ) );
 
-		$this->assertSame( 'https://example.org/protest', $clean['link_url'] );
+		$this->assertSame( 'https://example.org/protest', $clean['link_url'], 'a safe URL must survive being saved.' );
 	}
 
-	/**
-	 * Script tags are removed from the message, which is the one field allowed
-	 * to carry markup.
-	 */
-	public function test_sanitize_strips_scripts_from_the_message() {
+	public function test_sanitizing_strips_scripts_from_the_message_but_keeps_its_markup() {
 		$clean = FreeMyInternet_Options::sanitize( array( 'message' => 'Hi <script>alert(1)</script><strong>there</strong>' ) );
 
-		$this->assertStringNotContainsString( '<script', $clean['message'] );
-		$this->assertStringContainsString( '<strong>there</strong>', $clean['message'] );
+		$this->assertStringNotContainsString( '<script', $clean['message'], 'a script tag must not survive wp_kses_post().' );
+		$this->assertStringContainsString( '<strong>there</strong>', $clean['message'], 'basic markup must survive in the message.' );
 	}
 
-	/**
-	 * Colours must be real hex colours, or the default.
-	 */
-	public function test_sanitize_rejects_a_bad_colour() {
+	public function test_sanitizing_rejects_a_colour_that_is_not_a_hex_colour() {
 		$clean = FreeMyInternet_Options::sanitize(
 			array(
 				'background' => 'red; background-image:url(evil)',
@@ -125,68 +105,160 @@ class Test_FreeMyInternet_Options extends WP_UnitTestCase {
 			)
 		);
 
-		$this->assertSame( '#000000', $clean['background'] );
-		$this->assertSame( '#abcdef', $clean['text_color'] );
+		$this->assertSame( '#000000', $clean['background'], 'a bad colour must fall back to its default.' );
+		$this->assertSame( '#abcdef', $clean['text_color'], 'a real hex colour must be kept.' );
 	}
 
-	/**
-	 * Checkboxes come back as real booleans.
-	 */
-	public function test_sanitize_casts_checkboxes() {
+	public function test_sanitizing_casts_the_checkboxes_to_booleans() {
 		$clean = FreeMyInternet_Options::sanitize( array( 'enabled' => '1' ) );
 
-		$this->assertTrue( $clean['enabled'] );
-		$this->assertFalse( $clean['dismissible'] );
+		$this->assertTrue( $clean['enabled'], 'a ticked checkbox must be stored as true.' );
+		$this->assertFalse( $clean['dismissible'], 'an unposted checkbox must be stored as false.' );
 	}
 
-	/**
-	 * The datetime-local input posts `Y-m-d\TH:i`; it is stored with a space.
-	 */
-	public function test_sanitize_normalises_a_datetime() {
+	public function test_sanitizing_normalises_the_datetime_local_format() {
 		$clean = FreeMyInternet_Options::sanitize( array( 'start' => '2026-06-01T09:30' ) );
 
-		$this->assertSame( '2026-06-01 09:30', $clean['start'] );
+		$this->assertSame( '2026-06-01 09:30', $clean['start'], 'the posted T separator must be stored as a space.' );
 	}
 
-	/**
-	 * An unparseable bound is discarded, meaning "unbounded", rather than
-	 * silently becoming now.
-	 */
-	public function test_sanitize_discards_an_unparseable_datetime() {
+	public function test_sanitizing_discards_an_unparseable_bound_rather_than_defaulting_it() {
 		$clean = FreeMyInternet_Options::sanitize( array( 'start' => 'not a date' ) );
 
-		$this->assertSame( '', $clean['start'] );
+		$this->assertSame( '', $clean['start'], 'an unparseable bound means unbounded, not now.' );
 	}
 
-	/**
-	 * Sanitizing something that is not an array yields the defaults.
-	 */
-	public function test_sanitize_handles_a_non_array() {
-		$this->assertSame( FreeMyInternet_Options::get_defaults(), FreeMyInternet_Options::sanitize( 'nope' ) );
+	public function test_sanitizing_something_that_is_not_an_array_yields_the_defaults() {
+		$this->assertSame(
+			FreeMyInternet_Options::get_defaults(),
+			FreeMyInternet_Options::sanitize( 'nope' ),
+			'a non-array input must sanitize to the defaults.'
+		);
 	}
 
-	/**
-	 * The schema version is stamped, and stamping twice changes nothing.
-	 */
-	public function test_maybe_upgrade_is_idempotent() {
+	public function test_the_upgrade_routine_stamps_both_markers_in_one_row() {
 		FreeMyInternet_Options::maybe_upgrade();
-		$this->assertSame( FREEMYINTERNET_VERSION, get_option( FreeMyInternet_Options::VERSION_OPTION_NAME ) );
 
+		$this->assertSame(
+			array(
+				'plugin' => FREEMYINTERNET_VERSION,
+				'db'     => FREEMYINTERNET_DB_VERSION,
+			),
+			get_option( FreeMyInternet_Options::VERSION ),
+			'both markers must be written together, in the version row.'
+		);
+	}
+
+	public function test_the_upgrade_routine_can_run_twice_without_resetting_the_settings() {
+		FreeMyInternet_Options::maybe_upgrade();
 		FreeMyInternet_Options::update( array( 'heading' => 'Set by the user' ) );
 		FreeMyInternet_Options::maybe_upgrade();
 
-		// Re-running must not reset settings -- the classic consolidation bug.
-		$this->assertSame( 'Set by the user', FreeMyInternet_Options::get( 'heading' ) );
+		$this->assertSame(
+			'Set by the user',
+			FreeMyInternet_Options::get( 'heading' ),
+			're-running the upgrade must not overwrite what the owner saved.'
+		);
 	}
 
-	/**
-	 * The schema version lives outside the row it gates, or it could not be read
-	 * to decide whether that row needs migrating.
-	 */
-	public function test_version_is_stored_in_its_own_row() {
+	public function test_the_upgrade_routine_moves_the_pre_release_settings_row_across() {
+		update_option(
+			FreeMyInternet_Options::LEGACY_OPTION,
+			array(
+				'enabled' => true,
+				'heading' => 'From the old row',
+			)
+		);
+
 		FreeMyInternet_Options::maybe_upgrade();
 
-		$this->assertNotSame( FreeMyInternet_Options::OPTION_NAME, FreeMyInternet_Options::VERSION_OPTION_NAME );
-		$this->assertArrayNotHasKey( 'version', FreeMyInternet_Options::get() );
+		$this->assertSame(
+			'From the old row',
+			FreeMyInternet_Options::get( 'heading' ),
+			'the old settings row must be folded into the new one.'
+		);
+		$this->assertFalse(
+			get_option( FreeMyInternet_Options::LEGACY_OPTION ),
+			'the old settings row must be deleted once it has been folded in.'
+		);
+	}
+
+	public function test_the_upgrade_routine_reshapes_a_bare_version_string_into_the_two_markers() {
+		update_option( FreeMyInternet_Options::VERSION, '0.9.0' );
+
+		FreeMyInternet_Options::maybe_upgrade();
+
+		$stored = get_option( FreeMyInternet_Options::VERSION );
+
+		$this->assertIsArray( $stored, 'a bare version string must be reshaped into an array.' );
+		$this->assertSame( array( 'plugin', 'db' ), array_keys( $stored ), 'the reshaped row must hold exactly plugin and db.' );
+	}
+
+	public function test_the_upgrade_routine_re_sanitises_a_row_written_by_an_older_version() {
+		update_option(
+			FreeMyInternet_Options::OPTION,
+			array(
+				'heading'  => 'Protest<script>alert(1)</script>',
+				'link_url' => 'javascript:alert(1)',
+			)
+		);
+
+		FreeMyInternet_Options::maybe_upgrade();
+
+		$this->assertStringNotContainsString(
+			'<script',
+			FreeMyInternet_Options::get( 'heading' ),
+			'the upgrade must re-sanitise the stored settings, not just stamp a version.'
+		);
+		$this->assertSame( '', FreeMyInternet_Options::get( 'link_url' ), 'an unsafe stored URL must not survive the upgrade.' );
+	}
+
+	public function test_activating_the_plugin_stamps_the_version_row() {
+		FreeMyInternet::activate();
+
+		$this->assertSame(
+			array(
+				'plugin' => FREEMYINTERNET_VERSION,
+				'db'     => FREEMYINTERNET_DB_VERSION,
+			),
+			get_option( FreeMyInternet_Options::VERSION ),
+			'activation must leave the version row stamped.'
+		);
+	}
+
+	public function test_the_version_markers_are_read_back_as_strings_even_when_unset() {
+		$this->assertSame(
+			array(
+				'plugin' => '',
+				'db'     => '',
+			),
+			FreeMyInternet_Options::get_versions(),
+			'an unstamped install must report both markers as empty strings.'
+		);
+	}
+
+	public function test_the_two_presentations_are_the_only_ones_offered() {
+		$this->assertSame(
+			array( 'blackout', 'banner' ),
+			FreeMyInternet_Options::modes(),
+			'the plugin offers exactly two presentations.'
+		);
+	}
+
+	public function test_a_datetime_is_converted_to_a_timestamp_and_rubbish_is_not() {
+		$this->assertIsInt(
+			FreeMyInternet_Options::to_timestamp( '2026-06-01 09:30' ),
+			'a parseable datetime must become a timestamp.'
+		);
+		$this->assertFalse( FreeMyInternet_Options::to_timestamp( '' ), 'an empty bound has no timestamp.' );
+		$this->assertFalse( FreeMyInternet_Options::to_timestamp( 'rubbish' ), 'an unparseable bound has no timestamp.' );
+	}
+
+	public function test_a_non_scalar_datetime_is_discarded() {
+		$this->assertSame(
+			'',
+			FreeMyInternet_Options::sanitize_datetime( array( 'not', 'scalar' ) ),
+			'an array posted into a datetime field must be discarded.'
+		);
 	}
 }

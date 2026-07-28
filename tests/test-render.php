@@ -6,60 +6,36 @@
  */
 
 /**
- * Covers FreeMyInternet_Frontend's output.
+ * Covers FreeMyInternet_Display's output.
  *
  * Options are written with FreeMyInternet_Options::update() rather than through
  * the sanitizer on purpose: escaping at the sink has to hold on its own, for a
  * row written by an older version or by another plugin.
  */
-class Test_FreeMyInternet_Render extends WP_UnitTestCase {
+class FreeMyInternet_Render_Test extends FreeMyInternet_TestCase {
 
 	/**
-	 * Start from an unconfigured install.
-	 */
-	public function set_up() {
-		parent::set_up();
-
-		delete_option( FreeMyInternet_Options::OPTION_NAME );
-
-		// The suite runs in one process and these globals are not reset between
-		// test methods, so an enqueue in one test would otherwise still be
-		// registered in the next.
-		$GLOBALS['wp_scripts'] = null;
-		$GLOBALS['wp_styles']  = null;
-	}
-
-	/**
-	 * Render and return the markup.
+	 * Render the overlay and return its markup.
 	 *
 	 * @return string
 	 */
 	private function render() {
 		ob_start();
-		FreeMyInternet_Frontend::render();
+		FreeMyInternet_Display::render();
 		return ob_get_clean();
 	}
 
-	/**
-	 * A fresh activation shows nothing at all.
-	 */
-	public function test_renders_nothing_by_default() {
-		$this->assertSame( '', trim( $this->render() ) );
+	public function test_a_fresh_activation_renders_nothing_at_all() {
+		$this->assertSame( '', trim( $this->render() ), 'an unconfigured install must render nothing.' );
 	}
 
-	/**
-	 * Enabled but empty is still nothing -- an empty black screen helps nobody.
-	 */
-	public function test_renders_nothing_without_a_heading_or_message() {
+	public function test_an_enabled_but_empty_notice_renders_nothing() {
 		FreeMyInternet_Options::update( array( 'enabled' => true ) );
 
-		$this->assertSame( '', trim( $this->render() ) );
+		$this->assertSame( '', trim( $this->render() ), 'an empty black screen helps nobody.' );
 	}
 
-	/**
-	 * A heading alone is enough.
-	 */
-	public function test_renders_with_a_heading() {
+	public function test_a_heading_on_its_own_is_enough_to_render() {
 		FreeMyInternet_Options::update(
 			array(
 				'enabled' => true,
@@ -69,14 +45,11 @@ class Test_FreeMyInternet_Render extends WP_UnitTestCase {
 
 		$output = $this->render();
 
-		$this->assertStringContainsString( 'freemyinternet-overlay', $output );
-		$this->assertStringContainsString( 'Free My Internet', $output );
+		$this->assertStringContainsString( 'class="freemyinternet ', $output, 'the outermost element carries the root class.' );
+		$this->assertStringContainsString( 'Free My Internet', $output, 'the heading must reach the markup.' );
 	}
 
-	/**
-	 * The overlay is printed once, not once per title as in 0.01.
-	 */
-	public function test_renders_exactly_one_overlay() {
+	public function test_exactly_one_overlay_is_printed() {
 		FreeMyInternet_Options::update(
 			array(
 				'enabled' => true,
@@ -84,15 +57,14 @@ class Test_FreeMyInternet_Render extends WP_UnitTestCase {
 			)
 		);
 
-		// Count the container's own attribute: the class prefix would also match
-		// the __inner, __heading and __dismiss elements inside it.
-		$this->assertSame( 1, substr_count( $this->render(), 'data-freemyinternet-key="' ) );
+		$this->assertSame(
+			1,
+			substr_count( $this->render(), 'data-freemyinternet-key="' ),
+			'0.01 printed a copy of the banner at every title; there must be exactly one.'
+		);
 	}
 
-	/**
-	 * The chosen presentation reaches the markup.
-	 */
-	public function test_mode_modifier_class() {
+	public function test_the_chosen_presentation_reaches_the_class_attribute() {
 		FreeMyInternet_Options::update(
 			array(
 				'enabled' => true,
@@ -101,7 +73,7 @@ class Test_FreeMyInternet_Render extends WP_UnitTestCase {
 			)
 		);
 
-		$this->assertStringContainsString( 'freemyinternet-overlay--banner', $this->render() );
+		$this->assertStringContainsString( 'freemyinternet--banner', $this->render(), 'the banner modifier must be printed.' );
 
 		FreeMyInternet_Options::update(
 			array(
@@ -111,14 +83,10 @@ class Test_FreeMyInternet_Render extends WP_UnitTestCase {
 			)
 		);
 
-		$this->assertStringContainsString( 'freemyinternet-overlay--blackout', $this->render() );
+		$this->assertStringContainsString( 'freemyinternet--blackout', $this->render(), 'the blackout modifier must be printed.' );
 	}
 
-	/**
-	 * An unknown mode stored by some other means falls back rather than reaching
-	 * the class attribute.
-	 */
-	public function test_unknown_mode_falls_back() {
+	public function test_a_presentation_stored_by_some_other_means_falls_back_rather_than_escaping() {
 		FreeMyInternet_Options::update(
 			array(
 				'enabled' => true,
@@ -129,14 +97,11 @@ class Test_FreeMyInternet_Render extends WP_UnitTestCase {
 
 		$output = $this->render();
 
-		$this->assertStringContainsString( 'freemyinternet-overlay--blackout', $output );
-		$this->assertStringNotContainsString( 'onmouseover', $output );
+		$this->assertStringContainsString( 'freemyinternet--blackout', $output, 'an unknown presentation must fall back to blackout.' );
+		$this->assertStringNotContainsString( 'onmouseover', $output, 'an unknown presentation must not reach the class attribute.' );
 	}
 
-	/**
-	 * The heading is escaped at the sink.
-	 */
-	public function test_heading_is_escaped() {
+	public function test_the_heading_is_escaped_at_the_sink() {
 		FreeMyInternet_Options::update(
 			array(
 				'enabled' => true,
@@ -146,14 +111,11 @@ class Test_FreeMyInternet_Render extends WP_UnitTestCase {
 
 		$output = $this->render();
 
-		$this->assertStringNotContainsString( '<script>alert(1)</script>', $output );
-		$this->assertStringContainsString( '&lt;script&gt;', $output );
+		$this->assertStringNotContainsString( '<script>alert(1)</script>', $output, 'a stored script tag must not be printed raw.' );
+		$this->assertStringContainsString( '&lt;script&gt;', $output, 'the heading must be escaped rather than dropped.' );
 	}
 
-	/**
-	 * The message allows basic markup but never a script.
-	 */
-	public function test_message_allows_markup_but_not_scripts() {
+	public function test_the_message_allows_markup_but_never_a_script() {
 		FreeMyInternet_Options::update(
 			array(
 				'enabled' => true,
@@ -164,14 +126,11 @@ class Test_FreeMyInternet_Render extends WP_UnitTestCase {
 
 		$output = $this->render();
 
-		$this->assertStringContainsString( '<strong>Act now</strong>', $output );
-		$this->assertStringNotContainsString( '<script', $output );
+		$this->assertStringContainsString( '<strong>Act now</strong>', $output, 'the message is the one field allowed markup.' );
+		$this->assertStringNotContainsString( '<script', $output, 'a script must not survive wp_kses_post() at the sink.' );
 	}
 
-	/**
-	 * A javascript: target stored directly still cannot reach the page.
-	 */
-	public function test_unsafe_link_is_neutralised() {
+	public function test_a_javascript_link_stored_directly_still_cannot_reach_the_page() {
 		FreeMyInternet_Options::update(
 			array(
 				'enabled'   => true,
@@ -181,15 +140,10 @@ class Test_FreeMyInternet_Render extends WP_UnitTestCase {
 			)
 		);
 
-		$output = $this->render();
-
-		$this->assertStringNotContainsString( 'javascript:', $output );
+		$this->assertStringNotContainsString( 'javascript:', $this->render(), 'esc_url() must strip an unsafe protocol at the sink.' );
 	}
 
-	/**
-	 * The link needs both halves before it is shown.
-	 */
-	public function test_link_needs_both_url_and_text() {
+	public function test_the_link_is_shown_only_when_it_has_both_a_url_and_its_text() {
 		FreeMyInternet_Options::update(
 			array(
 				'enabled'   => true,
@@ -199,7 +153,7 @@ class Test_FreeMyInternet_Render extends WP_UnitTestCase {
 			)
 		);
 
-		$this->assertStringNotContainsString( 'freemyinternet-overlay__link', $this->render() );
+		$this->assertStringNotContainsString( 'freemyinternet__link', $this->render(), 'a link with no text must not be printed.' );
 
 		FreeMyInternet_Options::update(
 			array(
@@ -212,14 +166,32 @@ class Test_FreeMyInternet_Render extends WP_UnitTestCase {
 
 		$output = $this->render();
 
-		$this->assertStringContainsString( 'freemyinternet-overlay__link', $output );
-		$this->assertStringContainsString( 'https://example.org', $output );
+		$this->assertStringContainsString( 'freemyinternet__link', $output, 'a complete link must be printed.' );
+		$this->assertStringContainsString( 'https://example.org', $output, 'the link target must reach the markup.' );
 	}
 
-	/**
-	 * The dismiss button follows the setting.
-	 */
-	public function test_dismiss_button_follows_the_setting() {
+	public function test_the_image_is_shown_only_when_one_is_configured() {
+		FreeMyInternet_Options::update(
+			array(
+				'enabled' => true,
+				'heading' => 'Protest',
+			)
+		);
+
+		$this->assertStringNotContainsString( 'freemyinternet__image', $this->render(), 'no image is printed when none is set.' );
+
+		FreeMyInternet_Options::update(
+			array(
+				'enabled'   => true,
+				'heading'   => 'Protest',
+				'image_url' => 'https://example.org/protest.png',
+			)
+		);
+
+		$this->assertStringContainsString( 'freemyinternet__image', $this->render(), 'a configured image must be printed.' );
+	}
+
+	public function test_the_dismiss_button_follows_the_setting() {
 		FreeMyInternet_Options::update(
 			array(
 				'enabled'     => true,
@@ -228,7 +200,7 @@ class Test_FreeMyInternet_Render extends WP_UnitTestCase {
 			)
 		);
 
-		$this->assertStringContainsString( 'data-freemyinternet-dismiss', $this->render() );
+		$this->assertStringContainsString( 'data-freemyinternet-dismiss', $this->render(), 'the close button must be printed when asked for.' );
 
 		FreeMyInternet_Options::update(
 			array(
@@ -238,25 +210,22 @@ class Test_FreeMyInternet_Render extends WP_UnitTestCase {
 			)
 		);
 
-		$this->assertStringNotContainsString( 'data-freemyinternet-dismiss', $this->render() );
+		$this->assertStringNotContainsString( 'data-freemyinternet-dismiss', $this->render(), 'no close button when the setting is off.' );
 	}
 
-	/**
-	 * Editing the notice changes the dismissal key, so a visitor who dismissed the
-	 * previous notice is shown the new one.
-	 */
-	public function test_dismiss_key_changes_with_the_notice() {
-		$first  = FreeMyInternet_Frontend::dismiss_key( array( 'heading' => 'One' ) );
-		$second = FreeMyInternet_Frontend::dismiss_key( array( 'heading' => 'Two' ) );
+	public function test_editing_the_notice_changes_the_dismissal_key() {
+		$first  = FreeMyInternet_Display::dismiss_key( array( 'heading' => 'One' ) );
+		$second = FreeMyInternet_Display::dismiss_key( array( 'heading' => 'Two' ) );
 
-		$this->assertNotSame( $first, $second );
-		$this->assertSame( $first, FreeMyInternet_Frontend::dismiss_key( array( 'heading' => 'One' ) ) );
+		$this->assertNotSame( $first, $second, 'a different notice must produce a different dismissal key.' );
+		$this->assertSame(
+			$first,
+			FreeMyInternet_Display::dismiss_key( array( 'heading' => 'One' ) ),
+			'the same notice must produce the same dismissal key.'
+		);
 	}
 
-	/**
-	 * The colours reach the markup as custom properties, and a bad value does not.
-	 */
-	public function test_colours_are_sanitised_at_the_sink() {
+	public function test_the_colours_reach_the_markup_as_custom_properties_and_rubbish_does_not() {
 		FreeMyInternet_Options::update(
 			array(
 				'enabled'    => true,
@@ -268,15 +237,12 @@ class Test_FreeMyInternet_Render extends WP_UnitTestCase {
 
 		$output = $this->render();
 
-		$this->assertStringContainsString( '--freemyinternet-bg:#123456', $output );
-		$this->assertStringContainsString( '--freemyinternet-fg:#ffffff', $output );
-		$this->assertStringNotContainsString( 'javascript:', $output );
+		$this->assertStringContainsString( '--freemyinternet-bg:#123456', $output, 'the chosen background must reach the markup.' );
+		$this->assertStringContainsString( '--freemyinternet-fg:#ffffff', $output, 'a bad colour must fall back to its default.' );
+		$this->assertStringNotContainsString( 'javascript:', $output, 'a bad colour must not reach the style attribute.' );
 	}
 
-	/**
-	 * The overlay never renders on an admin request.
-	 */
-	public function test_never_renders_in_admin() {
+	public function test_the_overlay_never_renders_on_an_admin_request() {
 		FreeMyInternet_Options::update(
 			array(
 				'enabled' => true,
@@ -286,16 +252,13 @@ class Test_FreeMyInternet_Render extends WP_UnitTestCase {
 
 		set_current_screen( 'dashboard' );
 
-		$this->assertFalse( FreeMyInternet_Frontend::should_display() );
-		$this->assertSame( '', trim( $this->render() ) );
+		$this->assertFalse( FreeMyInternet_Display::should_display(), 'a misconfigured overlay must not lock the owner out.' );
+		$this->assertSame( '', trim( $this->render() ), 'nothing is rendered in wp-admin.' );
 
 		set_current_screen( 'front' );
 	}
 
-	/**
-	 * The filter can suppress the overlay.
-	 */
-	public function test_should_display_filter_can_suppress() {
+	public function test_the_should_display_filter_can_suppress_the_overlay() {
 		FreeMyInternet_Options::update(
 			array(
 				'enabled' => true,
@@ -305,20 +268,45 @@ class Test_FreeMyInternet_Render extends WP_UnitTestCase {
 
 		add_filter( 'freemyinternet_should_display', '__return_false' );
 
-		$this->assertFalse( FreeMyInternet_Frontend::should_display() );
-		$this->assertSame( '', trim( $this->render() ) );
+		$this->assertFalse( FreeMyInternet_Display::should_display(), 'the filter must be able to suppress the overlay.' );
+		$this->assertSame( '', trim( $this->render() ), 'a suppressed overlay renders nothing.' );
 
 		remove_filter( 'freemyinternet_should_display', '__return_false' );
 	}
 
-	/**
-	 * The CSS and JS are inlined rather than enqueued as files, and only while the
-	 * overlay is actually being shown.
-	 */
-	public function test_assets_are_inlined_only_when_displaying() {
-		FreeMyInternet_Frontend::enqueue();
+	public function test_the_should_display_filter_is_handed_the_options() {
+		FreeMyInternet_Options::update(
+			array(
+				'enabled' => true,
+				'heading' => 'Protest',
+			)
+		);
 
-		$this->assertFalse( wp_style_is( FreeMyInternet_Frontend::HANDLE, 'enqueued' ) );
+		$seen = null;
+
+		add_filter(
+			'freemyinternet_should_display',
+			function ( $display, $options ) use ( &$seen ) {
+				$seen = $options;
+
+				return $display;
+			},
+			10,
+			2
+		);
+
+		FreeMyInternet_Display::should_display();
+
+		remove_all_filters( 'freemyinternet_should_display' );
+
+		$this->assertIsArray( $seen, 'the filter must receive the plugin options.' );
+		$this->assertSame( 'Protest', $seen['heading'], 'the filter must receive the options actually in force.' );
+	}
+
+	public function test_the_styles_are_inlined_and_only_while_the_overlay_is_showing() {
+		FreeMyInternet_Display::enqueue();
+
+		$this->assertFalse( wp_style_is( FREEMYINTERNET_SLUG, 'enqueued' ), 'nothing is enqueued while there is nothing to show.' );
 
 		FreeMyInternet_Options::update(
 			array(
@@ -328,24 +316,23 @@ class Test_FreeMyInternet_Render extends WP_UnitTestCase {
 			)
 		);
 
-		FreeMyInternet_Frontend::enqueue();
+		FreeMyInternet_Display::enqueue();
 
-		$this->assertTrue( wp_style_is( FreeMyInternet_Frontend::HANDLE, 'enqueued' ) );
-		$this->assertTrue( wp_script_is( FreeMyInternet_Frontend::HANDLE, 'enqueued' ) );
+		$this->assertTrue( wp_style_is( FREEMYINTERNET_SLUG, 'enqueued' ), 'the stylesheet must be enqueued while a protest is running.' );
+		$this->assertTrue( wp_script_is( FREEMYINTERNET_SLUG, 'enqueued' ), 'the script must be enqueued when there is a button to wire up.' );
 
-		// Registered without a src, so nothing is fetched over HTTP.
-		$style = wp_styles()->registered[ FreeMyInternet_Frontend::HANDLE ];
-		$this->assertFalse( $style->src );
+		$this->assertFalse(
+			wp_styles()->registered[ FREEMYINTERNET_SLUG ]->src,
+			'the handle is registered without a src, so nothing is fetched over HTTP.'
+		);
 
-		$inline = wp_styles()->get_data( FreeMyInternet_Frontend::HANDLE, 'after' );
-		$this->assertNotEmpty( $inline );
-		$this->assertStringContainsString( '.freemyinternet-overlay', implode( '', (array) $inline ) );
+		$inline = wp_styles()->get_data( FREEMYINTERNET_SLUG, 'after' );
+
+		$this->assertNotEmpty( $inline, 'the stylesheet must be attached as inline CSS.' );
+		$this->assertStringContainsString( '.freemyinternet', implode( '', (array) $inline ), 'the inline CSS must be the overlay stylesheet.' );
 	}
 
-	/**
-	 * The script is not enqueued when there is no button for it to wire up.
-	 */
-	public function test_script_is_skipped_when_not_dismissible() {
+	public function test_the_script_is_skipped_when_there_is_no_button_for_it() {
 		FreeMyInternet_Options::update(
 			array(
 				'enabled'     => true,
@@ -354,9 +341,46 @@ class Test_FreeMyInternet_Render extends WP_UnitTestCase {
 			)
 		);
 
-		FreeMyInternet_Frontend::enqueue();
+		FreeMyInternet_Display::enqueue();
 
-		$this->assertTrue( wp_style_is( FreeMyInternet_Frontend::HANDLE, 'enqueued' ) );
-		$this->assertFalse( wp_script_is( FreeMyInternet_Frontend::HANDLE, 'enqueued' ) );
+		$this->assertTrue( wp_style_is( FREEMYINTERNET_SLUG, 'enqueued' ), 'the stylesheet is still needed without a button.' );
+		$this->assertFalse( wp_script_is( FREEMYINTERNET_SLUG, 'enqueued' ), 'no button means no script.' );
+	}
+
+	public function test_the_stylesheet_uses_logical_properties_rather_than_physical_ones() {
+		$css = FreeMyInternet_Display::css();
+
+		foreach ( array( 'margin-left', 'margin-right', 'padding-left', 'padding-right', 'border-left', 'border-right', 'float:left', 'float:right' ) as $physical ) {
+			$this->assertStringNotContainsString(
+				$physical,
+				$css,
+				$physical . ' is a physical property; one direction-neutral sheet must serve both writing directions.'
+			);
+		}
+
+		$this->assertStringNotContainsString( '!important', $css, 'a theme must be able to override the overlay.' );
+		$this->assertStringNotContainsString( 'font-family', $css, 'the overlay inherits its typeface from the theme.' );
+	}
+
+	public function test_the_dismissal_script_declares_nothing_in_the_global_scope() {
+		$js = FreeMyInternet_Display::js();
+
+		$this->assertStringStartsWith( '( function () {', $js, 'the script must live inside an IIFE.' );
+		$this->assertStringContainsString(
+			'data-freemyinternet-dismiss',
+			$js,
+			'behaviour must attach through a data attribute rather than an inline handler.'
+		);
+		$this->assertStringNotContainsString( 'onclick', $js, 'no inline event handlers.' );
+	}
+
+	public function test_every_rule_in_the_stylesheet_is_scoped_to_the_root_class() {
+		foreach ( explode( "\n", FreeMyInternet_Display::css() ) as $line ) {
+			if ( '' === trim( $line ) || 0 === strpos( $line, '@media' ) ) {
+				continue;
+			}
+
+			$this->assertStringStartsWith( '.freemyinternet', $line, 'every rule must be scoped under the plugin root class.' );
+		}
 	}
 }
