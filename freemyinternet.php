@@ -4,8 +4,8 @@
  * Plugin URI: https://lesterchan.net/portfolio/programming/php/
  * Description: Display a site-wide protest banner or full-screen blackout overlay, with an optional start and end date.
  * Version: 1.0.0
- * Requires at least: 6.0
- * Requires PHP: 7.4
+ * Requires at least: 6.8
+ * Requires PHP: 8.2
  * Author: Lester 'GaMerZ' Chan
  * Author URI: https://lesterchan.net
  * License: GPLv2 or later

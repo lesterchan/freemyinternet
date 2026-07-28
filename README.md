@@ -2,10 +2,10 @@
 Contributors: GamerZ  
 Donate link: https://lesterchan.net/site/donation/  
 Tags: protest, blackout, banner, notice, censorship  
-Requires at least: 6.0  
+Requires at least: 6.8  
 Tested up to: 7.0  
 Stable tag: 1.0.0  
-Requires PHP: 7.4  
+Requires PHP: 8.2  
 License: GPLv2 or later  
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -85,6 +85,7 @@ Only if you tick **Let visitors dismiss it**. The dismissal is remembered in the
 ## Changelog
 
 ### 1.0.0
+* BREAKING: Requires WordPress 6.8 and PHP 8.2. Older sites will not be offered the update
 * BREAKING: The notice is now **off by default**, and the built-in 2013 campaign banner is gone. See the upgrade notice below
 * NEW: Rewritten as a general-purpose protest plugin — write your own heading, message, link, image and colours instead of a fixed campaign banner
 * NEW: Two presentations — full-screen blackout, or a top banner that leaves the site readable
@@ -106,4 +107,4 @@ Only if you tick **Let visitors dismiss it**. The dismissal is remembered in the
 ## Upgrade Notice
 
 ### 1.0.0
-The notice is now off by default and the built-in 2013 campaign banner is gone. Version 0.01 blacked out your site the moment it was activated, using an image from a domain that no longer resolves — so what visitors actually saw was a black screen. After upgrading, write your own notice under `Settings -> FreeMyInternet`, pick a presentation and tick **Show the notice**. This release also fixes a bug that emptied every post title on the site.
+This release requires WordPress 6.8 and PHP 8.2. If your site runs anything older it will stay on 0.01 and simply not be offered the update — upgrade WordPress and PHP first. The notice is now off by default and the built-in 2013 campaign banner is gone. Version 0.01 blacked out your site the moment it was activated, using an image from a domain that no longer resolves — so what visitors actually saw was a black screen. After upgrading, write your own notice under `Settings -> FreeMyInternet`, pick a presentation and tick **Show the notice**. This release also fixes a bug that emptied every post title on the site.
