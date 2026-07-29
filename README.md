@@ -31,6 +31,9 @@ I spent most of my free time creating, updating, maintaining and supporting thes
 * Never renders in `wp-admin` or on the login screen, so it cannot lock you out
 * No extra HTTP requests — the few kilobytes of CSS and JavaScript are inlined, and only while a protest is actually running
 
+### Donations
+I spent most of my free time creating, updating, maintaining and supporting these plugins, if you really love my plugins and could spare me a couple of bucks, I will really appreciate it. If not feel free to use it without any obligations.
+
 ## Usage
 
 1. Open `wp-content/plugins` Folder
