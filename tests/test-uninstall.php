@@ -114,8 +114,8 @@ class FreeMyInternet_Uninstall_Test extends FreeMyInternet_TestCase {
 		);
 	}
 
-	public function test_the_removed_wp_get_sites_is_never_called() {
-		$this->assertStringNotContainsString( 'wp_get_sites', $this->code(), 'wp_get_sites() went in WP 5.1 and fatals.' );
+	public function test_the_deprecated_wp_get_sites_is_never_called() {
+		$this->assertStringNotContainsString( 'wp_get_sites', $this->code(), 'wp_get_sites() is capped at 100 sites, so a larger network uninstalls in part.' );
 	}
 
 	public function test_direct_access_to_the_uninstaller_is_blocked() {
