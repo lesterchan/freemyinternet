@@ -104,9 +104,6 @@ Only if you tick **Let visitors dismiss it**. The dismissal is remembered in the
 * FIXED: The banner callback was registered on the `the_title` filter but returned nothing, which emptied **every title on the site** — in the document title, navigation menus, widgets and archive listings — and emitted a copy of the banner at each one
 * FIXED: The banner image was loaded over plain HTTP from `freemyinternet.com`, which no longer resolves. The result was an opaque black layer covering the site with no image, no dismissal and a dead link
 
-### 0.01 (02-06-2013)
-* NEW: Initial Release
-
 ## Upgrade Notice
 
 ### 1.0.0

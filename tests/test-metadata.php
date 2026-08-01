@@ -49,7 +49,7 @@ class FreeMyInternet_Metadata_Test extends FreeMyInternet_TestCase {
 	 * @return array
 	 */
 	protected function directories( $relative = '' ) {
-		$skip  = array( '.', '..', '.git', '.github', 'vendor', 'node_modules' );
+		$skip  = array( '.', '..', '.git', '.github', 'vendor', 'node_modules', 'artifacts' );
 		$found = array();
 
 		foreach ( (array) scandir( $this->plugin_path( $relative ) ) as $entry ) {
