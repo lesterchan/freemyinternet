@@ -88,7 +88,7 @@ Only if you tick **Let visitors dismiss it**. The dismissal is remembered in the
 ## Changelog
 
 ### 1.0.0
-* BREAKING: Requires WordPress 6.8 and PHP 8.2. Older sites will not be offered the update
+* BREAKING: Requires WordPress 6.8 and PHP 8.2.
 * BREAKING: The notice is now **off by default**, and the built-in 2013 campaign banner is gone. See the upgrade notice below
 * NEW: Rewritten as a general-purpose protest plugin — write your own heading, message, link, image and colours instead of a fixed campaign banner
 * NEW: Two presentations — full-screen blackout, or a top banner that leaves the site readable
@@ -107,4 +107,9 @@ Only if you tick **Let visitors dismiss it**. The dismissal is remembered in the
 ## Upgrade Notice
 
 ### 1.0.0
-This release requires WordPress 6.8 and PHP 8.2. If your site runs anything older it will stay on 0.01 and simply not be offered the update — upgrade WordPress and PHP first. The notice is now off by default and the built-in 2013 campaign banner is gone. Version 0.01 blacked out your site the moment it was activated, using an image from a domain that no longer resolves — so what visitors actually saw was a black screen. After upgrading, write your own notice under `Settings -> FreeMyInternet`, pick a presentation and tick **Show the notice**. This release also fixes a bug that emptied every post title on the site.
+
+Requires WordPress 6.8 and PHP 8.2.
+
+**The notice is off by default, and the built-in 2013 campaign banner is gone.** 0.01 blacked the site out the moment it was activated, using an image from a domain that no longer resolves, so visitors saw a black screen. Write your own notice under `Settings -> FreeMyInternet`, pick a presentation and tick **Show the notice**.
+
+**Fixed:** a bug that emptied every post title on the site.
