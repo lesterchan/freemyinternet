@@ -98,12 +98,41 @@ class FreeMyInternet_Settings {
 	 * @return void
 	 */
 	public static function add_page() {
-		add_options_page(
+		$hook = add_options_page(
 			__( 'FreeMyInternet Settings', 'freemyinternet' ),
 			__( 'FreeMyInternet', 'freemyinternet' ),
 			self::capability(),
 			self::PAGE,
 			array( __CLASS__, 'render_page' )
+		);
+
+		if ( $hook ) {
+			// The screen does not print its own notices -- see render_page() --
+			// so anything it wants to say has to be queued before the printer
+			// runs. load-{$hook} fires in admin.php immediately before
+			// admin-header.php, which is what pulls in options-head.php.
+			add_action( 'load-' . $hook, array( __CLASS__, 'queue_schedule_warning' ) );
+		}
+	}
+
+	/**
+	 * Warn on the screen when the notice is switched on but its window has closed.
+	 *
+	 * Queued from load-{$hook} rather than while rendering, because by the time
+	 * the page renders, options-head.php has already printed the queue.
+	 *
+	 * @return void
+	 */
+	public static function queue_schedule_warning() {
+		if ( ! self::schedule_has_closed() ) {
+			return;
+		}
+
+		add_settings_error(
+			self::GROUP,
+			'freemyinternet_schedule_closed',
+			__( 'The notice is switched on, but the current date is outside its window, so visitors are not seeing it.', 'freemyinternet' ),
+			'warning'
 		);
 	}
 
@@ -536,19 +565,30 @@ class FreeMyInternet_Settings {
 		if ( ! current_user_can( self::capability() ) ) {
 			return;
 		}
-
-		if ( self::schedule_has_closed() ) {
-			add_settings_error(
-				self::GROUP,
-				'freemyinternet_schedule_closed',
-				__( 'The notice is switched on, but the current date is outside its window, so visitors are not seeing it.', 'freemyinternet' ),
-				'warning'
-			);
-		}
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'FreeMyInternet Settings', 'freemyinternet' ); ?></h1>
-			<?php settings_errors(); ?>
+			<?php
+			/*
+			 * No settings_errors() call here on purpose.
+			 *
+			 * This screen is registered with add_options_page(), so its parent
+			 * is options-general.php, and admin-header.php requires
+			 * options-head.php -- which calls settings_errors() -- for exactly
+			 * that parent. The notices are therefore already printed above
+			 * .wrap by the time this runs, and common.js relocates them into
+			 * it. Calling it again rendered every queued notice a second time,
+			 * "Settings saved." included, the two stacked one under the other
+			 * inside what looks like the plugin's own markup.
+			 *
+			 * wp-ban carries the same comment for the same reason. A screen on
+			 * a top-level menu needs the opposite -- admin.php includes no
+			 * options-head.php, so nothing prints unless the screen does -- and
+			 * that is the half of the rule this file must not be "fixed" back
+			 * to. It is also why the closed-window warning is queued from
+			 * load-{$hook} in add_page(): queueing it here would be too late.
+			 */
+			?>
 			<form method="post" action="options.php">
 				<?php
 				settings_fields( self::GROUP );

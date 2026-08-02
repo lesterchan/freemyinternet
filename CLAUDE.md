@@ -62,6 +62,14 @@ not start. Do not "helpfully" default it on.
   pins the other half.
 * Both bounds go through `wp_timezone()`, never UTC. A site owner types local
   time into a `datetime-local` field.
+* **The settings screen prints no notices of its own, and must not start.** It
+  is an `add_options_page()` screen, so `admin-header.php` requires
+  `options-head.php` — which calls `settings_errors()` — before the page is
+  drawn. A call in `render_page()` renders every queued notice twice. The
+  consequence is easy to miss: anything the screen wants to *say* has to be
+  queued **before** that printer runs, which is why the closed-window warning is
+  added on `load-{$hook}` from `add_page()` and not while rendering. §4.2.2 has
+  the rule and the other side of it; wp-ban carries the same comment.
 * `maybe_upgrade()` runs on activation **and on every admin load**, because
   activation hooks do not fire on plugin update — the usual reason a migration
   never runs.
@@ -94,6 +102,12 @@ predates the fan-out (§1.1's floor change, §3.1's licence wording):
 * `FreeMyInternet_Display::enqueue()` passed the boolean `$in_footer` with a
   comment explaining that the `$args` array form needed WP 6.3 and the floor was
   6.0. The floor is 6.8; it now passes `array( 'in_footer' => true )`.
+
+A fifth was closed the same day, and it was a bug rather than drift: the
+settings screen called `settings_errors()` under Settings, so "Settings saved."
+printed twice. The 2026-08-02 end-to-end sweep found it
+(`settings.spec.js:212`), and it is recorded here because the fix moved the
+closed-window warning out of `render_page()` — see the trap above.
 
 The Donations paragraph also appeared twice — once loose in `## Description` and
 once under `### Donations` where §3.3 puts it. The loose copy is gone.

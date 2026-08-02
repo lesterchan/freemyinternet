@@ -23,6 +23,54 @@ class FreeMyInternet_Settings_Test extends FreeMyInternet_TestCase {
 		$GLOBALS['wp_settings_errors'] = array();
 	}
 
+	/**
+	 * Render the screen the way wp-admin renders it, core's half included.
+	 *
+	 * Two things happen around this page that PHPUnit does not do by itself:
+	 * admin.php fires load-{$hook} before the header, and admin-header.php then
+	 * requires options-head.php -- which calls settings_errors() -- for anything
+	 * whose parent is options-general.php. Both are reproduced here, and the
+	 * printing half only when the page really is under Settings.
+	 *
+	 * That condition is the point. It lets one count assert both failures at
+	 * once: a screen that prints the notices itself renders them twice, and a
+	 * screen moved off the Settings menu without starting to print them renders
+	 * them not at all.
+	 *
+	 * @return string The markup a browser would be handed.
+	 */
+	private function render_screen_as_wp_admin_does() {
+		global $submenu;
+
+		set_current_screen( 'dashboard' );
+
+		FreeMyInternet_Settings::add_page();
+
+		$under_settings = in_array(
+			FreeMyInternet_Settings::PAGE,
+			wp_list_pluck( isset( $submenu['options-general.php'] ) ? $submenu['options-general.php'] : array(), 2 ),
+			true
+		);
+
+		// The hyphen is core's spelling, not a choice: admin.php fires
+		// "load-{$page_hook}" and silences the same sniff on the same line.
+		do_action( 'load-' . get_plugin_page_hookname( FreeMyInternet_Settings::PAGE, 'options-general.php' ) ); // phpcs:ignore WordPress.NamingConventions.ValidHookName.UseUnderscores
+
+		ob_start();
+
+		if ( $under_settings ) {
+			settings_errors();
+		}
+
+		FreeMyInternet_Settings::render_page();
+
+		$output = ob_get_clean();
+
+		set_current_screen( 'front' );
+
+		return $output;
+	}
+
 	public function test_the_setting_is_registered_against_the_group_the_form_posts() {
 		global $wp_registered_settings;
 
@@ -188,11 +236,14 @@ class FreeMyInternet_Settings_Test extends FreeMyInternet_TestCase {
 
 		FreeMyInternet_Settings::register_settings();
 
-		ob_start();
-		FreeMyInternet_Settings::render_page();
-		$output = ob_get_clean();
+		$screen = $this->render_screen_as_wp_admin_does();
 
-		$this->assertStringContainsString( 'notice-warning', $output, 'the closed window must be reported on the screen.' );
+		$this->assertStringContainsString( 'notice-warning', $screen, 'the closed window must be reported on the screen.' );
+		$this->assertStringContainsString(
+			'setting-error-freemyinternet_schedule_closed',
+			$screen,
+			'the warning must be queued early enough for options-head.php to print it.'
+		);
 	}
 
 	public function test_the_screen_stays_quiet_while_the_window_is_open() {
@@ -207,10 +258,25 @@ class FreeMyInternet_Settings_Test extends FreeMyInternet_TestCase {
 
 		FreeMyInternet_Settings::register_settings();
 
-		ob_start();
-		FreeMyInternet_Settings::render_page();
+		$this->assertStringNotContainsString(
+			'notice-warning',
+			$this->render_screen_as_wp_admin_does(),
+			'there is nothing to warn about while the notice is showing.'
+		);
+	}
 
-		$this->assertStringNotContainsString( 'notice-warning', ob_get_clean(), 'there is nothing to warn about while the notice is showing.' );
+	public function test_the_saved_notice_is_printed_once_and_not_twice() {
+		FreeMyInternet_Settings::register_settings();
+
+		// What options.php queues after a successful save, and what
+		// options-head.php prints on the way back to the screen.
+		add_settings_error( 'general', 'settings_updated', 'Settings saved.', 'success' );
+
+		$this->assertSame(
+			1,
+			substr_count( $this->render_screen_as_wp_admin_does(), 'setting-error-settings_updated' ),
+			'"Settings saved." must appear exactly once: twice means the screen printed the notices options-head.php had already printed for it, none means nobody printed them at all.'
+		);
 	}
 
 	public function test_the_settings_page_hangs_under_the_settings_menu() {
