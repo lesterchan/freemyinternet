@@ -144,10 +144,10 @@ class FreeMyInternet_Display {
 			return;
 		}
 
-		// The $args array form of the last parameter is WP 6.3+; the floor is 6.0,
-		// so this passes the boolean $in_footer instead. The script must run after
-		// the markup it operates on, which wp_footer has already printed.
-		wp_register_script( FREEMYINTERNET_SLUG, false, array(), FREEMYINTERNET_VERSION, true );
+		// 'in_footer' rather than the boolean: the $args array form arrived in WP
+		// 6.3 and the floor is 6.8 (§1.1). The script must run after the markup it
+		// operates on, which wp_footer has already printed.
+		wp_register_script( FREEMYINTERNET_SLUG, false, array(), FREEMYINTERNET_VERSION, array( 'in_footer' => true ) );
 		wp_enqueue_script( FREEMYINTERNET_SLUG );
 		wp_add_inline_script( FREEMYINTERNET_SLUG, self::js() );
 	}

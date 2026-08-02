@@ -19,8 +19,6 @@ Everything is configured under `Settings -> FreeMyInternet`. Nothing is shown to
 
 This plugin was written in June 2013 to support the FreeMyInternet campaign against the Media Development Authority of Singapore's licensing scheme, and originally displayed that campaign's banner and nothing else. Since 1.0.0 it is a general-purpose protest and blackout plugin, so it can be used for whatever you are protesting. The initial idea came from xenomancer's [Censor Me](https://wordpress.org/plugins/censor-me/ "Censor Me").
 
-I spent most of my free time creating, updating, maintaining and supporting these plugins, if you really love my plugins and could spare me a couple of bucks, I will really appreciate it. If not feel free to use it without any obligations.
-
 ### Features
 
 * Two presentations: full-screen blackout, or a top banner
@@ -90,6 +88,7 @@ Only if you tick **Let visitors dismiss it**. The dismissal is remembered in the
 ### 1.0.0
 * BREAKING: Requires WordPress 6.8 and PHP 8.2.
 * BREAKING: The notice is now **off by default**, and the built-in 2013 campaign banner is gone. See the upgrade notice below
+* BREAKING: The global `freemyinternet()` function is removed. It was the whole plugin — hooked to `the_title` and `get_header` — and any theme or snippet calling it directly will fatal
 * NEW: Rewritten as a general-purpose protest plugin — write your own heading, message, link, image and colours instead of a fixed campaign banner
 * NEW: Two presentations — full-screen blackout, or a top banner that leaves the site readable
 * NEW: Optional start and end date, outside which nothing is displayed
@@ -100,7 +99,6 @@ Only if you tick **Let visitors dismiss it**. The dismissal is remembered in the
 * CHANGED: Restructured into `includes/`, with every setting in the `freemyinternet_options` row and the plugin and schema versions in `freemyinternet_version`
 * CHANGED: CSS and JavaScript are inlined instead of being served as separate files, and the jQuery dependency is gone
 * CHANGED: The stylesheet is written with CSS logical properties, so one sheet serves both writing directions
-* CHANGED: Minimum WordPress 6.0 and PHP 7.4
 * FIXED: The banner callback was registered on the `the_title` filter but returned nothing, which emptied **every title on the site** — in the document title, navigation menus, widgets and archive listings — and emitted a copy of the banner at each one
 * FIXED: The banner image was loaded over plain HTTP from `freemyinternet.com`, which no longer resolves. The result was an opaque black layer covering the site with no image, no dismissal and a dead link
 
@@ -111,5 +109,7 @@ Only if you tick **Let visitors dismiss it**. The dismissal is remembered in the
 Requires WordPress 6.8 and PHP 8.2.
 
 **The notice is off by default, and the built-in 2013 campaign banner is gone.** 0.01 blacked the site out the moment it was activated, using an image from a domain that no longer resolves, so visitors saw a black screen. Write your own notice under `Settings -> FreeMyInternet`, pick a presentation and tick **Show the notice**.
+
+**The global `freemyinternet()` function is gone.** It was the entire plugin in 0.01, hooked to `the_title` and `get_header`, and a theme or snippet calling it directly will now stop the page with a fatal error. There is nothing to call in its place: the notice renders itself from the settings, and where it appears is decided by the `freemyinternet_should_display` filter.
 
 **Fixed:** a bug that emptied every post title on the site.

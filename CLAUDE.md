@@ -80,11 +80,27 @@ freemyinternet is the collection's reference for assertion-failure messages:
 
 ## Known discrepancies
 
-* **The GPL block in `freemyinternet.php:22-24` is the v2-only wording** under a
-  `License: GPLv2 or later` header and a `GPL-2.0-or-later` composer.json. §3.1
-  mandates the "or later" form; this is one of the five plugins that still
-  contradicts itself.
-* The 1.0.0 Upgrade Notice never names the removed global `freemyinternet()`.
-* `FreeMyInternet_Display::enqueue()` carries a comment reading "the floor is
-  6.0", left over from before §1.1 raised it to 6.8. The `$args` array form of
-  `wp_register_script()`'s last parameter is now usable.
+None outstanding. Four were closed on 2026-08-02, and all four were the cost of
+this plugin's agent having run before the spec settled — it is the one whose work
+predates the fan-out (§1.1's floor change, §3.1's licence wording):
+
+* The GPL block was the v2-**only** wording under a `License: GPLv2 or later`
+  header and a `GPL-2.0-or-later` composer.json. §3.1 mandates the "or later"
+  form, and this was the last plugin still contradicting itself.
+* The 1.0.0 Upgrade Notice never named the removed global `freemyinternet()`,
+  which was the entire plugin in 0.01 and fatals for anything still calling it.
+* The changelog carried `CHANGED: Minimum WordPress 6.0 and PHP 7.4` directly
+  under `BREAKING: Requires WordPress 6.8 and PHP 8.2`.
+* `FreeMyInternet_Display::enqueue()` passed the boolean `$in_footer` with a
+  comment explaining that the `$args` array form needed WP 6.3 and the floor was
+  6.0. The floor is 6.8; it now passes `array( 'in_footer' => true )`.
+
+The Donations paragraph also appeared twice — once loose in `## Description` and
+once under `### Donations` where §3.3 puts it. The loose copy is gone.
+
+**The FSF postal address is drift, not a discrepancy.** This plugin, wp-showhide
+and wp-relativedate carry `51 Franklin St` and the other sixteen carry
+`59 Temple Place`. §3.1 elides that line, and 51 Franklin St is the address the
+FSF actually uses, so the three are arguably right and the sixteen wrong.
+Deciding which way the collection converges is a call for the collection, not for
+this file.
