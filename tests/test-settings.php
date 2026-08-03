@@ -16,7 +16,7 @@ class FreeMyInternet_Settings_Test extends FreeMyInternet_TestCase {
 	public function set_up() {
 		parent::set_up();
 
-		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		wp_set_current_user( $this->create_admin() );
 
 		// add_settings_error() writes to a global the test suite does not reset, so
 		// a notice raised by one test would still be queued for the next one.
