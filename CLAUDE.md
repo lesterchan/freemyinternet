@@ -112,9 +112,10 @@ closed-window warning out of `render_page()` — see the trap above.
 The Donations paragraph also appeared twice — once loose in `## Description` and
 once under `### Donations` where §3.3 puts it. The loose copy is gone.
 
-**The FSF postal address is drift, not a discrepancy.** This plugin, wp-showhide
-and wp-relativedate carry `51 Franklin St` and the other sixteen carry
-`59 Temple Place`. §3.1 elides that line, and 51 Franklin St is the address the
-FSF actually uses, so the three are arguably right and the sixteen wrong.
-Deciding which way the collection converges is a call for the collection, not for
-this file.
+**The FSF postal address was drift, and it is decided.** This plugin, wp-showhide
+and wp-relativedate carried `51 Franklin St` against the other sixteen on
+`59 Temple Place`; the collection converged on Franklin Street in 2026-08-03.
+Nothing here is special any more — §3.1 now reproduces the tail in full rather
+than eliding it, `bin/verify.py` compares the block byte for byte, and all
+nineteen match. The street is spelled out as `51 Franklin Street`, so this
+plugin's old abbreviated form was not the winner either.
