@@ -79,9 +79,9 @@ Only if you tick **Let visitors dismiss it**. The dismissal is remembered in the
 
 ## Screenshots
 
-1. Full-screen blackout
-2. Top banner
-3. Settings screen
+1. Settings -> FreeMyInternet, where the notice, its colours and the window it appears in are set
+2. The full-screen blackout, as a visitor meets it
+3. The same notice as a top banner, which leaves the site readable
 
 ## Changelog
 
