@@ -32,12 +32,13 @@ This plugin was written in June 2013 to support the FreeMyInternet campaign agai
 ### Donations
 I spent most of my free time creating, updating, maintaining and supporting these plugins, if you really love my plugins and could spare me a couple of bucks, I will really appreciate it. If not feel free to use it without any obligations.
 
-## Usage
+## Installation
 
-1. Open `wp-content/plugins` Folder
-2. Put: `Folder: freemyinternet`
-3. Activate `FreeMyInternet` Plugin
-4. Go to `Settings -> FreeMyInternet`, write your notice and switch it on
+1. Install and activate the plugin.
+1. Go to `WP-Admin -> Settings -> FreeMyInternet` and write your heading, message, link and colours, and choose the full-screen blackout or the top banner.
+1. Switch it on. **Nothing is shown to visitors until you do**, so you can set it up in advance and turn it on when you mean to.
+
+## Usage
 
 Use the `freemyinternet_should_display` filter to control where the notice appears — for example, to show it to logged-out visitors only:
 
