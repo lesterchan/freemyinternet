@@ -25,8 +25,8 @@ and must stay that way** — a marker inside the settings array has to be rescue
 from the stored value on every save, because the settings form never posts one.
 
 The migration folds in the pre-1.0.0 row named `freemyinternet` — the bare slug
-— which only ever existed inside the unreleased major, so it is seen only on a
-development build.
+— which only ever existed inside pre-release 1.0.0 builds, so it is seen only
+on a development checkout, never on a site that installed a released version.
 
 **`enabled` defaults to false, and that is the whole point of the rebuild.** An
 upgrade must not silently keep blacking a site out and a fresh activation must
