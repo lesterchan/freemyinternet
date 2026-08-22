@@ -107,5 +107,4 @@ hooked to `the_title` and **emptied every post title on the site** (commit
 the settings form and the migration.
 
 **Every assertion in this suite carries a failure message**, including the ones
-PHPUnit would report legibly on its own. It is the plugin to copy when writing
-tests elsewhere.
+PHPUnit would report legibly on its own.
